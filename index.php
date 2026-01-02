@@ -12,14 +12,14 @@ $meine_termine = null;
 $notification_count = 0;
 if (isLoggedIn() && hasRole('patient')) {
     $user_id = $_SESSION['user_id'];
-    $sql = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('angefragt', 'bestätigt', 'abgelehnt') ORDER BY date, time";
+    $sql = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('angefragt', 'bestätigt', 'abgelehnt', 'storniert') ORDER BY date, time";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $meine_termine = $stmt->get_result();
     
-    // Benachrichtigungen zählen (nur bestätigte + abgelehnte Termine)
-    $sql_notifications = "SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt')";
+    // Benachrichtigungen zählen (nur bestätigte + abgelehnte + stornierte Termine)
+    $sql_notifications = "SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt', 'storniert')";
     $stmt_notif = $conn->prepare($sql_notifications);
     $stmt_notif->bind_param("i", $user_id);
     $stmt_notif->execute();
@@ -62,10 +62,10 @@ $conn->close();
                                 <li><h6 class="dropdown-header">Benachrichtigungen</h6></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <?php 
-                                // Nur bestätigte und abgelehnte Termine für Benachrichtigungen abrufen
+                                // Nur bestätigte, abgelehnte und stornierte Termine für Benachrichtigungen abrufen
                                 $user_id_notif = $_SESSION['user_id'];
                                 $conn_notif = getDBConnection();
-                                $sql_all = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt') ORDER BY date DESC, time DESC LIMIT 10";
+                                $sql_all = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt', 'storniert') ORDER BY date DESC, time DESC LIMIT 10";
                                 $stmt_all = $conn_notif->prepare($sql_all);
                                 $stmt_all->bind_param("i", $user_id_notif);
                                 $stmt_all->execute();
@@ -92,6 +92,9 @@ $conn->close();
                                                         <?php elseif ($notif['status'] === 'abgelehnt'): ?>
                                                             <span class="badge bg-danger">✗ Abgelehnt</span>
                                                             <small class="text-danger">Ihr Termin wurde leider abgelehnt</small>
+                                                        <?php elseif ($notif['status'] === 'storniert'): ?>
+                                                            <span class="badge bg-secondary">⛔ Storniert</span>
+                                                            <small class="text-danger">Ihr Termin wurde vom Arzt storniert. Bitte buchen Sie einen neuen Termin.</small>
                                                         <?php else: ?>
                                                             <span class="badge bg-warning text-dark">⏳ Angefragt</span>
                                                             <small class="text-muted">Wartet auf Bestätigung</small>
@@ -177,6 +180,8 @@ $conn->close();
                                                 <span class="badge bg-warning text-dark">Angefragt</span>
                                             <?php elseif ($termin['status'] === 'abgelehnt'): ?>
                                                 <span class="badge bg-danger">Abgelehnt</span>
+                                            <?php elseif ($termin['status'] === 'storniert'): ?>
+                                                <span class="badge bg-secondary">Storniert</span>
                                             <?php else: ?>
                                                 <span class="badge bg-success">Bestätigt</span>
                                             <?php endif; ?>

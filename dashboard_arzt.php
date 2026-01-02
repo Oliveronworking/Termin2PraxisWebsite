@@ -147,7 +147,7 @@ $conn->close();
                                         <td><?php echo htmlspecialchars($termin['patient_email']); ?></td>
                                         <td>
                                             <button class="btn btn-sm btn-danger" onclick="deleteAppointment(<?php echo $termin['id']; ?>)">
-                                                Löschen
+                                                Stornieren
                                             </button>
                                         </td>
                                     </tr>

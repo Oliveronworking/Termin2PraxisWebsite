@@ -102,7 +102,7 @@ function rejectAppointment(appointmentId) {
 
 // Termin löschen
 function deleteAppointment(appointmentId) {
-    if (!confirm('Möchten Sie diesen Termin wirklich löschen?')) {
+    if (!confirm('Möchten Sie diesen Termin wirklich stornieren? Der Patient wird benachrichtigt.')) {
         return;
     }
     

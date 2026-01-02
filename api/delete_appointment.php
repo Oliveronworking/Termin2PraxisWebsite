@@ -27,14 +27,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->close();
     } else {
-        // Termin komplett löschen
-        $stmt = $conn->prepare("DELETE FROM appointments WHERE id = ?");
+        // Termin stornieren (nicht löschen, damit Patient Benachrichtigung sieht)
+        // Zuerst prüfen, ob der Termin existiert
+        $check_stmt = $conn->prepare("SELECT id, status FROM appointments WHERE id = ?");
+        $check_stmt->bind_param("i", $appointment_id);
+        $check_stmt->execute();
+        $check_result = $check_stmt->get_result();
+        
+        if ($check_result->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Termin wurde nicht gefunden.']);
+            $check_stmt->close();
+            $conn->close();
+            exit();
+        }
+        
+        $appointment = $check_result->fetch_assoc();
+        $check_stmt->close();
+        
+        // Jetzt stornieren
+        $stmt = $conn->prepare("UPDATE appointments SET status = 'storniert' WHERE id = ?");
         $stmt->bind_param("i", $appointment_id);
         
         if ($stmt->execute() && $stmt->affected_rows > 0) {
-            echo json_encode(['success' => true, 'message' => 'Termin wurde gelöscht.']);
+            echo json_encode(['success' => true, 'message' => 'Termin wurde storniert. Patient wird benachrichtigt.']);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Termin konnte nicht gelöscht werden.']);
+            echo json_encode(['success' => false, 'message' => 'Termin konnte nicht storniert werden. Aktueller Status: ' . $appointment['status']]);
         }
         $stmt->close();
     }

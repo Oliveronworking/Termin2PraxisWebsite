@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     user_id INT DEFAULT NULL,
     date DATE NOT NULL,
     time TIME NOT NULL,
-    status ENUM('frei', 'angefragt', 'bestätigt') DEFAULT 'frei',
+    status ENUM('frei', 'angefragt', 'bestätigt', 'abgelehnt', 'storniert') DEFAULT 'frei',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
