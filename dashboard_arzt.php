@@ -8,22 +8,30 @@ $conn = getDBConnection();
 $freie_termine = [];
 $angefragte_termine = [];
 $bestaetigte_termine = [];
+$bestaetigte_termine_vergangen = [];
 
 $sql = "SELECT a.*, u.name as patient_name, u.email as patient_email, 
         arzt.name as confirmed_by_name, a.confirmed_at
         FROM appointments a 
         LEFT JOIN users u ON a.user_id = u.id 
         LEFT JOIN users arzt ON a.confirmed_by = arzt.id
-        ORDER BY a.date, a.time";
+        ORDER BY a.date DESC, a.time DESC";
 $result = $conn->query($sql);
+
+$heute = date('Y-m-d');
 
 while ($row = $result->fetch_assoc()) {
     if ($row['status'] === 'frei') {
         $freie_termine[] = $row;
     } elseif ($row['status'] === 'angefragt') {
         $angefragte_termine[] = $row;
-    } else {
-        $bestaetigte_termine[] = $row;
+    } elseif ($row['status'] === 'bestätigt') {
+        // Vergangene und zukünftige Termine trennen
+        if ($row['date'] < $heute) {
+            $bestaetigte_termine_vergangen[] = $row;
+        } else {
+            $bestaetigte_termine[] = $row;
+        }
     }
 }
 
@@ -123,12 +131,17 @@ $conn->close();
 
         <!-- Bestätigte Termine -->
         <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                <h5>Bestätigte Termine (<?php echo count($bestaetigte_termine); ?>)</h5>
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">⭐ AKTUELLE TERMINE ⭐ (<?php echo count($bestaetigte_termine); ?>)</h5>
+                <?php if (count($bestaetigte_termine_vergangen) > 0): ?>
+                    <button class="btn btn-outline-light btn-sm" onclick="toggleVergangeneTermine()" id="toggleBtn">
+                        + <?php echo count($bestaetigte_termine_vergangen); ?> vergangene Termine anzeigen
+                    </button>
+                <?php endif; ?>
             </div>
             <div class="card-body">
                 <?php if (empty($bestaetigte_termine)): ?>
-                    <p class="text-muted">Keine bestätigten Termine vorhanden.</p>
+                    <p class="text-muted">Keine aktuellen Termine vorhanden.</p>
                 <?php else: ?>
                     <div class="table-responsive">
                         <table class="table table-striped">
@@ -159,13 +172,58 @@ $conn->close();
                                         </td>
                                         <td>
                                             <button class="btn btn-sm btn-danger" onclick="deleteAppointment(<?php echo $termin['id']; ?>)">
-                                                Stornieren
+                                                Löschen
                                             </button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
+                    </div>
+                <?php endif; ?>
+                
+                <!-- Vergangene Termine (versteckt) -->
+                <?php if (!empty($bestaetigte_termine_vergangen)): ?>
+                    <div id="vergangeneTermine" style="display: none;">
+                        <hr>
+                        <h6 class="text-muted mb-3">
+                            📦 Vergangene Termine (<?php echo count($bestaetigte_termine_vergangen); ?>)
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Uhrzeit</th>
+                                        <th>Patient</th>
+                                        <th>E-Mail</th>
+                                        <th>Bestätigt von</th>
+                                        <th>Aktion</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($bestaetigte_termine_vergangen as $termin): ?>
+                                        <tr id="termin-<?php echo $termin['id']; ?>" class="text-muted">
+                                            <td><?php echo date('d.m.Y', strtotime($termin['date'])); ?></td>
+                                            <td><?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</td>
+                                            <td><?php echo htmlspecialchars($termin['patient_name']); ?></td>
+                                            <td><?php echo htmlspecialchars($termin['patient_email']); ?></td>
+                                            <td>
+                                                <?php if ($termin['confirmed_by_name']): ?>
+                                                    <span class="badge bg-secondary"><?php echo htmlspecialchars($termin['confirmed_by_name']); ?></span><br>
+                                                    <small class="text-muted"><?php echo date('d.m.Y', strtotime($termin['confirmed_at'])); ?></small>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteAppointment(<?php echo $termin['id']; ?>)">
+                                                    Löschen
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>

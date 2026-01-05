@@ -140,3 +140,18 @@ function deleteAppointment(appointmentId) {
         console.error('Error:', error);
     });
 }
+
+// Toggle für vergangene Termine
+function toggleVergangeneTermine() {
+    const vergangeneDiv = document.getElementById('vergangeneTermine');
+    const toggleBtn = document.getElementById('toggleBtn');
+    
+    if (vergangeneDiv.style.display === 'none') {
+        vergangeneDiv.style.display = 'block';
+        toggleBtn.innerHTML = '- Vergangene Termine ausblenden';
+    } else {
+        vergangeneDiv.style.display = 'none';
+        const count = document.querySelectorAll('#vergangeneTermine tbody tr').length;
+        toggleBtn.innerHTML = '+ ' + count + ' vergangene Termine anzeigen';
+    }
+}
