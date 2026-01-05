@@ -9,9 +9,11 @@ $freie_termine = [];
 $angefragte_termine = [];
 $bestaetigte_termine = [];
 
-$sql = "SELECT a.*, u.name as patient_name, u.email as patient_email 
+$sql = "SELECT a.*, u.name as patient_name, u.email as patient_email, 
+        arzt.name as confirmed_by_name, a.confirmed_at
         FROM appointments a 
         LEFT JOIN users u ON a.user_id = u.id 
+        LEFT JOIN users arzt ON a.confirmed_by = arzt.id
         ORDER BY a.date, a.time";
 $result = $conn->query($sql);
 
@@ -135,7 +137,9 @@ $conn->close();
                                     <th>Datum</th>
                                     <th>Uhrzeit</th>
                                     <th>Patient</th>
-                                    <th>E-Mail</th>                                    <th>Aktion</th>                                    <th>Aktion</th>
+                                    <th>E-Mail</th>
+                                    <th>Bestätigt von</th>
+                                    <th>Aktion</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -145,6 +149,14 @@ $conn->close();
                                         <td><?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</td>
                                         <td><?php echo htmlspecialchars($termin['patient_name']); ?></td>
                                         <td><?php echo htmlspecialchars($termin['patient_email']); ?></td>
+                                        <td>
+                                            <?php if ($termin['confirmed_by_name']): ?>
+                                                <span class="badge bg-success">Bestätigt von <?php echo htmlspecialchars($termin['confirmed_by_name']); ?></span><br>
+                                                <small class="text-muted"><?php echo date('d.m.Y H:i', strtotime($termin['confirmed_at'])); ?></small>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary">Keine Info</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td>
                                             <button class="btn btn-sm btn-danger" onclick="deleteAppointment(<?php echo $termin['id']; ?>)">
                                                 Stornieren

@@ -19,14 +19,17 @@ CREATE TABLE IF NOT EXISTS appointments (
     date DATE NOT NULL,
     time TIME NOT NULL,
     status ENUM('frei', 'angefragt', 'bestätigt', 'abgelehnt', 'storniert') DEFAULT 'frei',
+    confirmed_by INT DEFAULT NULL,
+    confirmed_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (confirmed_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Beispieldaten: Ein Arzt und ein Patient erstellen
 -- Passwort für beide: "password123" (gehashed mit password_hash)
 INSERT INTO users (name, email, password, role) VALUES
-('Dr. Schmidt', 'arzt@termin2praxis.de', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'arzt'),
+('Florian Albrecht', 'arzt@termin2praxis.de', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'arzt'),
 ('Max Mustermann', 'patient@termin2praxis.de', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'patient');
 
 -- Beispiel freie Termine

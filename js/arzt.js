@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Termin ablehnen
 function rejectAppointment(appointmentId) {
-    if (!confirm('Möchten Sie diesen Termin wirklich ablehnen? Der Patient wird benachrichtigt.')) {
+    if (!confirm('Möchten Sie diesen Termin wirklich ablehnen und löschen?')) {
         return;
     }
     
@@ -88,7 +88,13 @@ function rejectAppointment(appointmentId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Zeile sofort aus der Tabelle entfernen
+            const row = document.getElementById('termin-' + appointmentId);
+            if (row) {
+                row.remove();
+            }
             alert(data.message);
+            // Seite neu laden, um Zähler zu aktualisieren
             location.reload();
         } else {
             alert(data.message);
@@ -102,7 +108,7 @@ function rejectAppointment(appointmentId) {
 
 // Termin löschen
 function deleteAppointment(appointmentId) {
-    if (!confirm('Möchten Sie diesen Termin wirklich stornieren? Der Patient wird benachrichtigt.')) {
+    if (!confirm('Möchten Sie diesen Termin wirklich stornieren und löschen?')) {
         return;
     }
     
@@ -117,7 +123,13 @@ function deleteAppointment(appointmentId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Zeile sofort aus der Tabelle entfernen
+            const row = document.getElementById('termin-' + appointmentId);
+            if (row) {
+                row.remove();
+            }
             alert(data.message);
+            // Seite neu laden, um Zähler zu aktualisieren
             location.reload();
         } else {
             alert(data.message);
