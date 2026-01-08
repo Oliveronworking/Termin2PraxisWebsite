@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Termin ablehnen
 function rejectAppointment(appointmentId) {
-    if (!confirm('Möchten Sie diesen Termin wirklich ablehnen und löschen?')) {
+    if (!confirm('Möchten Sie diesen Termin wirklich ablehnen? Der Patient wird benachrichtigt.')) {
         return;
     }
     
@@ -108,7 +108,7 @@ function rejectAppointment(appointmentId) {
 
 // Termin löschen
 function deleteAppointment(appointmentId) {
-    if (!confirm('Möchten Sie diesen Termin wirklich stornieren und löschen?')) {
+    if (!confirm('Möchten Sie diesen Termin wirklich stornieren? Der Patient wird benachrichtigt.')) {
         return;
     }
     

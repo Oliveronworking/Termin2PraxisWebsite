@@ -16,18 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn = getDBConnection();
     
     if ($action === 'reject') {
-        // Termin ablehnen - komplett löschen
-        $stmt = $conn->prepare("DELETE FROM appointments WHERE id = ? AND status IN ('angefragt', 'bestätigt')");
+        // Termin ablehnen - Status auf 'abgelehnt' setzen, damit Patient Benachrichtigung sieht
+        $stmt = $conn->prepare("UPDATE appointments SET status = 'abgelehnt' WHERE id = ? AND status IN ('angefragt', 'bestätigt')");
         $stmt->bind_param("i", $appointment_id);
         
         if ($stmt->execute() && $stmt->affected_rows > 0) {
-            echo json_encode(['success' => true, 'message' => 'Termin wurde abgelehnt und entfernt.']);
+            echo json_encode(['success' => true, 'message' => 'Termin wurde abgelehnt. Patient wird benachrichtigt.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Termin konnte nicht abgelehnt werden.']);
         }
         $stmt->close();
     } else {
-        // Termin stornieren - komplett löschen
+        // Termin stornieren - Status ändern, damit Patient Benachrichtigung erhält
         // Zuerst prüfen, ob der Termin existiert
         $check_stmt = $conn->prepare("SELECT id, status FROM appointments WHERE id = ?");
         $check_stmt->bind_param("i", $appointment_id);
@@ -44,14 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $appointment = $check_result->fetch_assoc();
         $check_stmt->close();
         
-        // Jetzt löschen
-        $stmt = $conn->prepare("DELETE FROM appointments WHERE id = ?");
+        // Jetzt stornieren - Status auf 'storniert' setzen, damit Patient Benachrichtigung sieht
+        $stmt = $conn->prepare("UPDATE appointments SET status = 'storniert' WHERE id = ?");
         $stmt->bind_param("i", $appointment_id);
         
         if ($stmt->execute() && $stmt->affected_rows > 0) {
-            echo json_encode(['success' => true, 'message' => 'Termin wurde storniert und entfernt.']);
+            echo json_encode(['success' => true, 'message' => 'Termin wurde storniert. Patient wird benachrichtigt.']);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Termin konnte nicht gelöscht werden.']);
+            echo json_encode(['success' => false, 'message' => 'Termin konnte nicht storniert werden.']);
         }
         $stmt->close();
     }

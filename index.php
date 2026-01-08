@@ -91,7 +91,7 @@ $conn->close();
                                                             <small class="text-success">Ihr Termin wurde vom Arzt bestätigt</small>
                                                         <?php elseif ($notif['status'] === 'abgelehnt'): ?>
                                                             <span class="badge bg-danger">✗ Abgelehnt</span>
-                                                            <small class="text-danger">Ihr Termin wurde leider abgelehnt</small>
+                                                            <small class="text-danger">Der Termin wurde gelöscht. Bitte wählen Sie einen anderen Termin aus.</small>
                                                         <?php elseif ($notif['status'] === 'storniert'): ?>
                                                             <span class="badge bg-secondary">⛔ Storniert</span>
                                                             <small class="text-danger">Ihr Termin wurde vom Arzt storniert. Bitte buchen Sie einen neuen Termin.</small>
