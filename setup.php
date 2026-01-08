@@ -9,14 +9,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Alte Benutzer löschen
     $conn->query("DELETE FROM users");
     
-    // Passwort hashen
-    $password = password_hash('password123', PASSWORD_DEFAULT);
+    // Passwort im Klartext (nur für Demo/Schulprojekt!)
+    $password = 'password123';
     
     // Neue Benutzer erstellen
     $stmt = $conn->prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)");
     
     // Arzt
-    $name = 'Dr. Schmidt';
+    $name = 'Dr Albrecht';
     $email = 'arzt@termin2praxis.de';
     $role = 'arzt';
     $stmt->bind_param("ssss", $name, $email, $password, $role);
