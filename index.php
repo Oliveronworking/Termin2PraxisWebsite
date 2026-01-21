@@ -9,14 +9,23 @@ $freie_termine = $conn->query($sql);
 
 // Wenn eingeloggt, "Meine Termine" anzeigen
 $meine_termine = null;
+$vergangene_termine = null;
 $notification_count = 0;
 if (isLoggedIn() && hasRole('patient')) {
     $user_id = $_SESSION['user_id'];
-    $sql = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('angefragt', 'bestätigt', 'abgelehnt', 'storniert') ORDER BY date, time";
+    // Nur aktuelle/zukünftige Termine
+    $sql = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('angefragt', 'bestätigt', 'abgelehnt', 'storniert') AND date >= CURDATE() ORDER BY date, time";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $meine_termine = $stmt->get_result();
+    
+    // Vergangene Termine
+    $sql_past = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('angefragt', 'bestätigt', 'abgelehnt', 'storniert') AND date < CURDATE() ORDER BY date DESC, time DESC";
+    $stmt_past = $conn->prepare($sql_past);
+    $stmt_past->bind_param("i", $user_id);
+    $stmt_past->execute();
+    $vergangene_termine = $stmt_past->get_result();
     
     // Benachrichtigungen zählen (nur ungelesene bestätigte + abgelehnte + stornierte Termine)
     $sql_notifications = "SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt', 'storniert') AND is_read = FALSE";
@@ -28,6 +37,7 @@ if (isLoggedIn() && hasRole('patient')) {
     $stmt_notif->close();
     
     $stmt->close();
+    $stmt_past->close();
 }
 
 $conn->close();
@@ -156,12 +166,17 @@ $conn->close();
         <?php if ($meine_termine && $meine_termine->num_rows > 0): ?>
             <!-- Meine Termine (nur für eingeloggte Patienten) -->
             <div class="card mb-5 shadow" id="meineTermine">
-                <div class="card-header bg-info text-white py-3">
-                    <h4 class="mb-0">✓ Meine gebuchten Termine 
+                <div class="card-header bg-info text-white py-3 d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">✓ Meine aktuellen Termine 
                         <?php if ($notification_count > 0): ?>
                             <span class="badge bg-danger ms-2"><?php echo $notification_count; ?> neue Updates</span>
                         <?php endif; ?>
                     </h4>
+                    <?php if ($vergangene_termine && $vergangene_termine->num_rows > 0): ?>
+                        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#vergangeneTermineModal">
+                            Vergangene Termine (<?php echo $vergangene_termine->num_rows; ?>)
+                        </button>
+                    <?php endif; ?>
                 </div>
                 <div class="card-body p-4">
                     <div class="table-responsive">
@@ -193,6 +208,58 @@ $conn->close();
                                 <?php endwhile; ?>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <!-- Modal für vergangene Termine -->
+        <?php if (isLoggedIn() && hasRole('patient') && $vergangene_termine && $vergangene_termine->num_rows > 0): ?>
+            <div class="modal fade" id="vergangeneTermineModal" tabindex="-1" aria-labelledby="vergangeneTermineModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-secondary text-white">
+                            <h5 class="modal-title" id="vergangeneTermineModalLabel">Vergangene Termine</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Datum</th>
+                                            <th>Uhrzeit</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php 
+                                        $vergangene_termine->data_seek(0); // Reset pointer
+                                        while ($termin = $vergangene_termine->fetch_assoc()): 
+                                        ?>
+                                            <tr>
+                                                <td><?php echo date('d.m.Y', strtotime($termin['date'])); ?></td>
+                                                <td><?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</td>
+                                                <td>
+                                                    <?php if ($termin['status'] === 'angefragt'): ?>
+                                                        <span class="badge bg-warning text-dark">Angefragt</span>
+                                                    <?php elseif ($termin['status'] === 'abgelehnt'): ?>
+                                                        <span class="badge bg-danger">Abgelehnt</span>
+                                                    <?php elseif ($termin['status'] === 'storniert'): ?>
+                                                        <span class="badge bg-secondary">Storniert</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-success">Bestätigt</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endwhile; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                        </div>
                     </div>
                 </div>
             </div>
