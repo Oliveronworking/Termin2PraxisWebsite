@@ -27,10 +27,10 @@ CREATE TABLE IF NOT EXISTS appointments (
 );
 
 -- Beispieldaten: Ein Arzt und ein Patient erstellen
--- Passwort für beide: "password123" (gehashed mit password_hash)
+-- Passwort für beide: "password123" (im Klartext, nur für Demo!)
 INSERT INTO users (name, email, password, role) VALUES
-('Florian Albrecht', 'arzt@termin2praxis.de', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'arzt'),
-('Max Mustermann', 'patient@termin2praxis.de', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'patient');
+('Florian Albrecht', 'arzt@termin2praxis.de', 'password123', 'arzt'),
+('Max Mustermann', 'patient@termin2praxis.de', 'password123', 'patient');
 
 -- Beispiel freie Termine
 INSERT INTO appointments (user_id, date, time, status) VALUES
