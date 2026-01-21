@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     status ENUM('frei', 'angefragt', 'bestätigt', 'abgelehnt', 'storniert') DEFAULT 'frei',
     confirmed_by INT DEFAULT NULL,
     confirmed_at TIMESTAMP NULL,
+    is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (confirmed_by) REFERENCES users(id) ON DELETE SET NULL

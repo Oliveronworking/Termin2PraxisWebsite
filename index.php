@@ -18,8 +18,8 @@ if (isLoggedIn() && hasRole('patient')) {
     $stmt->execute();
     $meine_termine = $stmt->get_result();
     
-    // Benachrichtigungen zählen (nur bestätigte + abgelehnte + stornierte Termine)
-    $sql_notifications = "SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt', 'storniert')";
+    // Benachrichtigungen zählen (nur ungelesene bestätigte + abgelehnte + stornierte Termine)
+    $sql_notifications = "SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt', 'storniert') AND is_read = FALSE";
     $stmt_notif = $conn->prepare($sql_notifications);
     $stmt_notif->bind_param("i", $user_id);
     $stmt_notif->execute();
@@ -65,7 +65,7 @@ $conn->close();
                                 // Nur bestätigte, abgelehnte und stornierte Termine für Benachrichtigungen abrufen
                                 $user_id_notif = $_SESSION['user_id'];
                                 $conn_notif = getDBConnection();
-                                $sql_all = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt', 'storniert') ORDER BY date DESC, time DESC LIMIT 10";
+                                $sql_all = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt', 'storniert') ORDER BY is_read ASC, date DESC, time DESC LIMIT 10";
                                 $stmt_all = $conn_notif->prepare($sql_all);
                                 $stmt_all->bind_param("i", $user_id_notif);
                                 $stmt_all->execute();
@@ -82,8 +82,11 @@ $conn->close();
                                         $count++;
                                     ?>
                                         <li>
-                                            <a class="dropdown-item" href="#meineTermine">
+                                            <a class="dropdown-item <?php echo !$notif['is_read'] ? 'bg-light' : ''; ?>" href="#meineTermine">
                                                 <div class="d-flex align-items-start">
+                                                    <?php if (!$notif['is_read']): ?>
+                                                        <span class="badge bg-danger me-2" style="font-size: 0.6rem; padding: 0.2em 0.4em;">NEU</span>
+                                                    <?php endif; ?>
                                                     <div class="flex-grow-1">
                                                         <strong><?php echo date('d.m.Y', strtotime($notif['date'])); ?></strong> um <?php echo date('H:i', strtotime($notif['time'])); ?> Uhr<br>
                                                         <?php if ($notif['status'] === 'bestätigt'): ?>
@@ -237,6 +240,40 @@ $conn->close();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Benachrichtigungen als gelesen markieren, wenn Dropdown geöffnet wird
+        <?php if (isLoggedIn() && hasRole('patient')): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            const notificationDropdown = document.getElementById('notificationDropdown');
+            if (notificationDropdown) {
+                notificationDropdown.addEventListener('click', function() {
+                    // Benachrichtigungen als gelesen markieren
+                    fetch('api/mark_notifications_read.php', {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Badge nach kurzer Verzögerung ausblenden
+                            setTimeout(function() {
+                                const badge = notificationDropdown.querySelector('.badge');
+                                if (badge) {
+                                    badge.style.transition = 'opacity 0.3s';
+                                    badge.style.opacity = '0';
+                                    setTimeout(function() {
+                                        badge.style.display = 'none';
+                                    }, 300);
+                                }
+                            }, 500);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Fehler beim Markieren der Benachrichtigungen:', error);
+                    });
+                });
+            }
+        });
+        <?php endif; ?>
+
         // Termin buchen
         function bookAppointment(appointmentId) {
             if (!confirm('Möchten Sie diesen Termin buchen?')) {
