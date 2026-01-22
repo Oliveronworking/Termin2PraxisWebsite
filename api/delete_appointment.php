@@ -1,10 +1,84 @@
 <?php
 require_once '../config.php';
-requireRole('arzt');
 
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Für Patienten: Vergangene Termine löschen
+    if (isLoggedIn() && hasRole('patient')) {
+        $user_id = $_SESSION['user_id'];
+        $conn = getDBConnection();
+        
+        try {
+            // Alle vergangenen Termine löschen
+            if (isset($_POST['delete_all_past']) && $_POST['delete_all_past'] === 'true') {
+                $sql = "DELETE FROM appointments WHERE user_id = ? AND date < CURDATE() AND status IN ('angefragt', 'bestätigt', 'abgelehnt', 'storniert')";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("i", $user_id);
+                
+                if ($stmt->execute()) {
+                    $deleted_count = $stmt->affected_rows;
+                    $stmt->close();
+                    $conn->close();
+                    echo json_encode([
+                        'success' => true, 
+                        'message' => "Es wurden $deleted_count vergangene Termine gelöscht."
+                    ]);
+                    exit;
+                } else {
+                    throw new Exception('Fehler beim Löschen der Termine');
+                }
+            }
+            
+            // Einzelnen vergangenen Termin löschen
+            if (isset($_POST['appointment_id']) && !empty($_POST['appointment_id'])) {
+                $appointment_id = intval($_POST['appointment_id']);
+                
+                // Prüfen, ob der Termin dem Benutzer gehört und vergangen ist
+                $sql = "SELECT * FROM appointments WHERE id = ? AND user_id = ? AND date < CURDATE()";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("ii", $appointment_id, $user_id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                
+                if ($result->num_rows === 0) {
+                    $stmt->close();
+                    $conn->close();
+                    echo json_encode(['success' => false, 'message' => 'Termin nicht gefunden oder kann nicht gelöscht werden']);
+                    exit;
+                }
+                
+                $stmt->close();
+                
+                // Termin löschen
+                $sql = "DELETE FROM appointments WHERE id = ? AND user_id = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param("ii", $appointment_id, $user_id);
+                
+                if ($stmt->execute()) {
+                    $stmt->close();
+                    $conn->close();
+                    echo json_encode(['success' => true, 'message' => 'Termin wurde erfolgreich gelöscht']);
+                    exit;
+                } else {
+                    throw new Exception('Fehler beim Löschen des Termins');
+                }
+            }
+            
+        } catch (Exception $e) {
+            if (isset($stmt)) $stmt->close();
+            if (isset($conn)) $conn->close();
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+    
+    // Für Ärzte: Termine ablehnen/stornieren
+    if (!hasRole('arzt')) {
+        echo json_encode(['success' => false, 'message' => 'Zugriff verweigert']);
+        exit;
+    }
+    
     $appointment_id = $_POST['appointment_id'] ?? 0;
     $action = $_POST['action'] ?? 'delete'; // 'delete' oder 'reject'
     
