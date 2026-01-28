@@ -71,6 +71,34 @@ body {
     .card {
         margin-bottom: 15px;
     }
+    
+    .filter-section {
+        padding: 15px;
+    }
+    
+    .filter-chip {
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        margin: 3px;
+    }
+    
+    .kategorie-title {
+        font-size: 1rem;
+    }
+    
+    .search-box {
+        font-size: 0.9rem;
+        padding: 10px 15px;
+    }
+    
+    .display-5 {
+        font-size: 1.8rem;
+    }
+    
+    .praxis-badge {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+    }
 }
 
 /* Animationen */

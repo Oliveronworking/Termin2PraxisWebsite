@@ -3,9 +3,79 @@ require_once 'config.php';
 
 $conn = getDBConnection();
 
-// Alle Arztpraxen laden
-$sql = "SELECT * FROM praxen ORDER BY name";
-$praxen = $conn->query($sql);
+// Filter-Parameter
+$filter_kategorie = isset($_GET['kategorie']) ? $_GET['kategorie'] : '';
+$filter_spezialgebiet = isset($_GET['spezialgebiet']) ? $_GET['spezialgebiet'] : '';
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$sort_by = isset($_GET['sort']) ? $_GET['sort'] : 'name';
+
+// SQL-Query mit Filtern aufbauen
+$sql = "SELECT * FROM praxen WHERE 1=1";
+$params = [];
+$types = '';
+
+if (!empty($filter_kategorie)) {
+    $sql .= " AND kategorie = ?";
+    $params[] = $filter_kategorie;
+    $types .= 's';
+}
+
+if (!empty($filter_spezialgebiet)) {
+    $sql .= " AND spezialgebiet = ?";
+    $params[] = $filter_spezialgebiet;
+    $types .= 's';
+}
+
+if (!empty($search_query)) {
+    $sql .= " AND (name LIKE ? OR beschreibung LIKE ? OR adresse LIKE ? OR spezialgebiet LIKE ?)";
+    $search_param = "%{$search_query}%";
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $types .= 'ssss';
+}
+
+// Sortierung
+switch ($sort_by) {
+    case 'name':
+        $sql .= " ORDER BY name ASC";
+        break;
+    case 'kategorie':
+        $sql .= " ORDER BY kategorie ASC, name ASC";
+        break;
+    case 'spezialgebiet':
+        $sql .= " ORDER BY spezialgebiet ASC, name ASC";
+        break;
+    default:
+        $sql .= " ORDER BY name ASC";
+}
+
+// Query ausführen
+if (!empty($params)) {
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $praxen = $stmt->get_result();
+} else {
+    $praxen = $conn->query($sql);
+}
+
+// Alle Kategorien für Filter laden
+$kategorien_sql = "SELECT DISTINCT kategorie FROM praxen WHERE kategorie IS NOT NULL ORDER BY kategorie";
+$kategorien_result = $conn->query($kategorien_sql);
+$kategorien = [];
+while ($row = $kategorien_result->fetch_assoc()) {
+    $kategorien[] = $row['kategorie'];
+}
+
+// Alle Spezialgebiete für Filter laden
+$spezialgebiete_sql = "SELECT DISTINCT spezialgebiet FROM praxen WHERE spezialgebiet IS NOT NULL ORDER BY spezialgebiet";
+$spezialgebiete_result = $conn->query($spezialgebiete_sql);
+$spezialgebiete = [];
+while ($row = $spezialgebiete_result->fetch_assoc()) {
+    $spezialgebiete[] = $row['spezialgebiet'];
+}
 
 // Benachrichtigungen zählen (global für alle Praxen)
 $notification_count = 0;
@@ -45,6 +115,7 @@ $conn->close();
     <link rel="icon" type="image/svg+xml" href="assets/T2P_transparent_2.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
         .praxis-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -71,6 +142,7 @@ $conn->close();
             padding: 5px 15px;
             border-radius: 20px;
             font-weight: bold;
+            font-size: 0.85rem;
         }
         .delete-notification-btn:hover {
             background-color: rgba(220, 53, 69, 0.1) !important;
@@ -78,6 +150,196 @@ $conn->close();
         }
         .delete-notification-btn:active {
             transform: scale(0.95);
+        }
+        
+        /* Chat-Interface Styles */
+        .chat-search-container {
+            max-width: 800px;
+            margin: 0 auto 50px;
+            padding: 40px 20px;
+        }
+        .chat-icon {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .chat-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        .chat-subtitle {
+            font-size: 1.2rem;
+        }
+        .smart-search-box {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            position: relative;
+        }
+        .search-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .search-icon {
+            position: absolute;
+            left: 20px;
+            color: #6c757d;
+            font-size: 1.3rem;
+            pointer-events: none;
+        }
+        .smart-search-input {
+            width: 100%;
+            padding: 18px 50px 18px 55px;
+            border: 3px solid #e9ecef;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+        .smart-search-input:focus {
+            outline: none;
+            border-color: #0d6efd;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(13,110,253,0.1);
+        }
+        .clear-search-btn {
+            position: absolute;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #6c757d;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: 5px;
+        }
+        .clear-search-btn:hover {
+            color: #dc3545;
+            transform: rotate(90deg);
+        }
+        .suggestions-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 30px;
+            right: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.2);
+            max-height: 500px;
+            overflow-y: auto;
+            z-index: 1000;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .suggestions-section {
+            padding: 15px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .suggestions-section:last-child {
+            border-bottom: none;
+        }
+        .suggestions-header {
+            padding: 10px 20px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .suggestion-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .suggestion-item:hover {
+            background: #f8f9fa;
+            padding-left: 30px;
+        }
+        .suggestion-item i {
+            color: #0d6efd;
+        }
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 2px solid #e9ecef;
+        }
+        .active-filter-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+        .active-filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .remove-filter {
+            background: rgba(255,255,255,0.3);
+            border: none;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        .remove-filter:hover {
+            background: rgba(255,255,255,0.5);
+            transform: scale(1.1);
+        }
+        .search-help {
+            margin-top: 15px;
+        }
+        .results-count {
+            font-size: 1.1rem;
+            color: #6c757d;
+            font-weight: 500;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .chat-title {
+                font-size: 1.8rem;
+            }
+            .chat-subtitle {
+                font-size: 1rem;
+            }
+            .smart-search-box {
+                padding: 20px;
+            }
+            .smart-search-input {
+                font-size: 1rem;
+                padding: 15px 45px 15px 50px;
+            }
+            .suggestions-dropdown {
+                left: 20px;
+                right: 20px;
+            }
         }
     </style>
 </head>
@@ -240,16 +502,109 @@ $conn->close();
             </div>
         <?php endif; ?>
 
+        <!-- Chat-Interface für intelligente Arztsuche -->
+        <div class="chat-search-container">
+            <div class="chat-hero text-center mb-4">
+                <div class="chat-icon mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="text-primary" viewBox="0 0 16 16">
+                        <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"/>
+                    </svg>
+                </div>
+                <h2 class="chat-title mb-2">Finden Sie Ihren perfekten Arzt</h2>
+                <p class="chat-subtitle text-muted">Mit wenigen Klicks zum passenden Facharzt in Ihrer Nähe</p>
+            </div>
+
+            <!-- Intelligentes Suchfeld -->
+            <div class="smart-search-box">
+                <div class="search-input-wrapper">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" 
+                           id="smartSearch" 
+                           class="smart-search-input" 
+                           placeholder="Beschreiben Sie Ihr Anliegen, z.B. 'Hautarzt', 'Herz', 'Kinderarzt'..."
+                           value="<?php echo htmlspecialchars($search_query); ?>"
+                           autocomplete="off">
+                    <?php if (!empty($search_query) || !empty($filter_kategorie) || !empty($filter_spezialgebiet)): ?>
+                        <button class="clear-search-btn" id="clearSearch" title="Suche zurücksetzen">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </button>
+                    <?php endif; ?>
+                </div>
+                
+                <!-- Vorschläge Dropdown -->
+                <div class="suggestions-dropdown" id="suggestionsDropdown" style="display: none;">
+                    <div class="suggestions-section">
+                        <div class="suggestions-header">💡 Schnellzugriff</div>
+                        <div class="suggestion-item" data-type="quick" data-value="">
+                            <i class="bi bi-list-ul"></i> Alle Ärzte anzeigen
+                        </div>
+                    </div>
+                    
+                    <div class="suggestions-section" id="kategorieSection">
+                        <div class="suggestions-header">📂 Kategorien</div>
+                        <?php foreach ($kategorien as $kat): ?>
+                            <div class="suggestion-item" data-type="kategorie" data-value="<?php echo htmlspecialchars($kat); ?>">
+                                <i class="bi bi-folder2-open"></i> <?php echo htmlspecialchars($kat); ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                    <div class="suggestions-section" id="fachgebietSection">
+                        <div class="suggestions-header">🏥 Fachgebiete</div>
+                        <?php foreach ($spezialgebiete as $spez): ?>
+                            <div class="suggestion-item" data-type="spezialgebiet" data-value="<?php echo htmlspecialchars($spez); ?>">
+                                <i class="bi bi-hospital"></i> <?php echo htmlspecialchars($spez); ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Aktive Filter Anzeige -->
+                <?php if (!empty($filter_kategorie) || !empty($filter_spezialgebiet)): ?>
+                    <div class="active-filters mt-3">
+                        <span class="active-filter-label">Aktiver Filter:</span>
+                        <?php if (!empty($filter_kategorie)): ?>
+                            <span class="active-filter-badge">
+                                <i class="bi bi-folder2-open"></i> <?php echo htmlspecialchars($filter_kategorie); ?>
+                                <button class="remove-filter" onclick="window.location.href='index.php'">×</button>
+                            </span>
+                        <?php endif; ?>
+                        <?php if (!empty($filter_spezialgebiet)): ?>
+                            <span class="active-filter-badge">
+                                <i class="bi bi-hospital"></i> <?php echo htmlspecialchars($filter_spezialgebiet); ?>
+                                <button class="remove-filter" onclick="window.location.href='index.php'">×</button>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Hilfetext -->
+            <div class="search-help text-center mt-3">
+                <small class="text-muted">
+                    💬 Tipp: Klicken Sie in das Suchfeld für Vorschläge oder tippen Sie einfach los
+                </small>
+            </div>
+        </div>
+
         <!-- Arztpraxen Übersicht -->
         <div class="mb-5" id="praxenUebersicht">
-            <div class="text-center mb-4">
-                <h2 class="display-5 fw-bold">🏥 Unsere Arztpraxen</h2>
-                <p class="lead text-muted">Wählen Sie eine Praxis aus, um verfügbare Termine zu sehen</p>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="display-5 fw-bold mb-2">🏥 Unsere Arztpraxen</h2>
+                    <p class="results-count">
+                        <?php 
+                        $total_count = $praxen->num_rows;
+                        echo $total_count; 
+                        ?> <?php echo $total_count === 1 ? 'Praxis' : 'Praxen'; ?> gefunden
+                    </p>
+                </div>
             </div>
             
             <?php if ($praxen->num_rows === 0): ?>
                 <div class="alert alert-warning text-center">
-                    <h5>Derzeit sind keine Arztpraxen verfügbar.</h5>
+                    <h5><i class="bi bi-exclamation-triangle"></i> Keine Arztpraxen gefunden</h5>
+                    <p class="mb-0">Versuchen Sie, die Filter zu ändern oder die Suche anzupassen.</p>
                 </div>
             <?php else: ?>
                 <div class="row g-4">
@@ -301,7 +656,127 @@ $conn->close();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Benachrichtigungen als gelesen markieren, wenn Dropdown geöffnet wird
+        // Smart Search mit Vorschlägen
+        document.addEventListener('DOMContentLoaded', function() {
+            const smartSearch = document.getElementById('smartSearch');
+            const suggestionsDropdown = document.getElementById('suggestionsDropdown');
+            const clearSearchBtn = document.getElementById('clearSearch');
+            
+            // Vorschläge bei Fokus anzeigen
+            if (smartSearch) {
+                smartSearch.addEventListener('focus', function() {
+                    suggestionsDropdown.style.display = 'block';
+                    filterSuggestions(this.value);
+                });
+
+                // Live-Filter beim Tippen
+                smartSearch.addEventListener('input', function() {
+                    const query = this.value.toLowerCase();
+                    filterSuggestions(query);
+                    suggestionsDropdown.style.display = 'block';
+                });
+
+                // Suche bei Enter
+                smartSearch.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        applySearch();
+                    }
+                });
+            }
+
+            // Vorschläge filtern
+            function filterSuggestions(query) {
+                const kategorieSection = document.getElementById('kategorieSection');
+                const fachgebietSection = document.getElementById('fachgebietSection');
+                
+                if (!query) {
+                    // Alle anzeigen
+                    kategorieSection.style.display = 'block';
+                    fachgebietSection.style.display = 'block';
+                    return;
+                }
+
+                // Filter Kategorien
+                const kategorieItems = kategorieSection.querySelectorAll('.suggestion-item');
+                let hasVisibleKategorie = false;
+                kategorieItems.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(query)) {
+                        item.style.display = 'flex';
+                        hasVisibleKategorie = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                kategorieSection.style.display = hasVisibleKategorie ? 'block' : 'none';
+
+                // Filter Fachgebiete
+                const fachgebietItems = fachgebietSection.querySelectorAll('.suggestion-item');
+                let hasVisibleFachgebiet = false;
+                fachgebietItems.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(query)) {
+                        item.style.display = 'flex';
+                        hasVisibleFachgebiet = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                fachgebietSection.style.display = hasVisibleFachgebiet ? 'block' : 'none';
+            }
+
+            // Außerhalb klicken schließt Dropdown
+            document.addEventListener('click', function(e) {
+                if (!smartSearch.contains(e.target) && !suggestionsDropdown.contains(e.target)) {
+                    suggestionsDropdown.style.display = 'none';
+                }
+            });
+
+            // Vorschlag-Items anklicken
+            const suggestionItems = document.querySelectorAll('.suggestion-item');
+            suggestionItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    const value = this.dataset.value;
+                    
+                    const params = new URLSearchParams();
+                    
+                    if (type === 'kategorie' && value) {
+                        params.append('kategorie', value);
+                    } else if (type === 'spezialgebiet' && value) {
+                        params.append('spezialgebiet', value);
+                    }
+                    
+                    const queryString = params.toString();
+                    const url = queryString ? 'index.php?' + queryString + '#praxenUebersicht' : 'index.php#praxenUebersicht';
+                    window.location.href = url;
+                });
+            });
+
+            // Suche zurücksetzen
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function() {
+                    window.location.href = 'index.php';
+                });
+            }
+
+            // Suche anwenden
+            function applySearch() {
+                const query = smartSearch.value.trim();
+                if (query) {
+                    window.location.href = 'index.php?search=' + encodeURIComponent(query) + '#praxenUebersicht';
+                }
+            }
+
+            // Smooth Scroll zu Ergebnissen
+            if (window.location.hash === '#praxenUebersicht') {
+                setTimeout(function() {
+                    document.getElementById('praxenUebersicht')?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            }
+        });
+
+        // Benachrichtigungen als gelesen markieren
         <?php if (isLoggedIn() && hasRole('patient')): ?>
         document.addEventListener('DOMContentLoaded', function() {
             const notificationDropdown = document.getElementById('notificationDropdown');
