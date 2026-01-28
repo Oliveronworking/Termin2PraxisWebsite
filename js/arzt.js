@@ -1,16 +1,38 @@
 // JavaScript für Arzt Dashboard
 
+// Toggle für Mehrfach-Termine
+document.getElementById('multipleSlots').addEventListener('change', function() {
+    const multipleOptions = document.getElementById('multipleOptions');
+    multipleOptions.style.display = this.checked ? 'block' : 'none';
+});
+
 // Neuen Termin erstellen
 document.getElementById('createAppointmentForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
     const date = document.getElementById('date').value;
     const time = document.getElementById('time').value;
+    const duration = document.getElementById('duration').value;
+    const description = document.getElementById('description').value;
+    const multipleSlots = document.getElementById('multipleSlots').checked;
+    const slotCount = document.getElementById('slotCount').value;
+    const slotInterval = document.getElementById('slotInterval').value;
     const messageDiv = document.getElementById('createMessage');
     
     const formData = new FormData();
     formData.append('date', date);
     formData.append('time', time);
+    if (duration) {
+        formData.append('duration', duration);
+    }
+    if (description) {
+        formData.append('description', description);
+    }
+    if (multipleSlots) {
+        formData.append('multipleSlots', 'true');
+        formData.append('slotCount', slotCount);
+        formData.append('slotInterval', slotInterval);
+    }
     
     fetch('api/create_appointment.php', {
         method: 'POST',
@@ -20,12 +42,21 @@ document.getElementById('createAppointmentForm').addEventListener('submit', func
     .then(data => {
         if (data.success) {
             messageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-            // Formular zurücksetzen
-            document.getElementById('createAppointmentForm').reset();
-            // Seite nach 2 Sekunden neu laden
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
+            
+            // Bei Mehrfach-Terminen Seite neu laden für korrekte Anzeige
+            if (multipleSlots || data.count > 1) {
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+            } else {
+                // Einzelnen Termin dynamisch zur Liste hinzufügen
+                addTerminToList(date, time, duration, description);
+                
+                // Erfolgs-Nachricht nach 3 Sekunden ausblenden
+                setTimeout(() => {
+                    messageDiv.innerHTML = '';
+                }, 3000);
+            }
         } else {
             messageDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
         }
@@ -62,6 +93,70 @@ function confirmAppointment(appointmentId) {
         alert('Fehler beim Bestätigen des Termins');
         console.error('Error:', error);
     });
+}
+
+// Funktion zum dynamischen Hinzufügen eines Termins zur Liste
+function addTerminToList(date, time, duration, description) {
+    // Prüfen, ob "Keine freien Termine"-Nachricht existiert und diese entfernen
+    const keineTermineMsg = document.getElementById('keineFreienTermine');
+    if (keineTermineMsg) {
+        keineTermineMsg.remove();
+    }
+    
+    // Prüfen, ob Tabelle existiert, sonst erstellen
+    let tbody = document.getElementById('freieTermineTbody');
+    if (!tbody) {
+        const freieTermineBody = document.getElementById('freieTermineBody');
+        freieTermineBody.innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-striped" id="freieTermineTable">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Uhrzeit</th>
+                            <th>Dauer</th>
+                            <th>Art</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="freieTermineTbody">
+                    </tbody>
+                </table>
+            </div>
+        `;
+        tbody = document.getElementById('freieTermineTbody');
+    }
+    
+    // Datum formatieren (von YYYY-MM-DD zu DD.MM.YYYY)
+    const [year, month, day] = date.split('-');
+    const formattedDate = `${day}.${month}.${year}`;
+    
+    // Zeit formatieren (von HH:MM zu HH:MM Uhr)
+    const formattedTime = `${time} Uhr`;
+    
+    // Dauer formatieren
+    const formattedDuration = duration ? `${duration} Min.` : '-';
+    
+    // Beschreibung formatieren
+    const formattedDescription = description ? description : '-';
+    
+    // Neue Zeile erstellen
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td>${formattedDate}</td>
+        <td>${formattedTime}</td>
+        <td>${formattedDuration}</td>
+        <td>${formattedDescription}</td>
+        <td><span class="badge bg-secondary">Frei</span></td>
+    `;
+    
+    // Zeile am Anfang der Tabelle einfügen (neueste oben)
+    tbody.insertBefore(newRow, tbody.firstChild);
+    
+    // Zähler aktualisieren
+    const header = document.getElementById('freieTermineHeader');
+    const currentCount = tbody.children.length;
+    header.textContent = `Freie Termine (${currentCount})`;
 }
 
 // Datum-Feld auf heute als Minimum setzen

@@ -62,6 +62,8 @@ $conn->close();
                                     <tr>
                                         <th>Datum</th>
                                         <th>Uhrzeit</th>
+                                        <th>Dauer</th>
+                                        <th>Art</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -70,6 +72,8 @@ $conn->close();
                                         <tr>
                                             <td><?php echo date('d.m.Y', strtotime($termin['date'])); ?></td>
                                             <td><?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</td>
+                                            <td><?php echo $termin['duration'] ? $termin['duration'] . ' Min.' : '-'; ?></td>
+                                            <td><?php echo $termin['description'] ? htmlspecialchars($termin['description']) : '-'; ?></td>
                                             <td>
                                                 <?php if ($termin['status'] === 'angefragt'): ?>
                                                     <span class="badge bg-warning text-dark">Angefragt</span>
@@ -107,6 +111,12 @@ $conn->close();
                                             </h6>
                                             <p class="card-text">
                                                 <strong><?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</strong>
+                                                <?php if ($termin['duration']): ?>
+                                                    <br><small class="text-muted">Dauer: <?php echo $termin['duration']; ?> Min.</small>
+                                                <?php endif; ?>
+                                                <?php if ($termin['description']): ?>
+                                                    <br><small class="text-info"><?php echo htmlspecialchars($termin['description']); ?></small>
+                                                <?php endif; ?>
                                             </p>
                                             <button class="btn btn-primary btn-sm" onclick="bookAppointment(<?php echo $termin['id']; ?>)">
                                                 Termin buchen
