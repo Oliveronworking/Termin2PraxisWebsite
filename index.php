@@ -42,6 +42,7 @@ $conn->close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Termin2Praxis - Termine buchen</title>
+    <link rel="icon" type="image/svg+xml" href="assets/T2P_transparent_2.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <style>
@@ -83,7 +84,10 @@ $conn->close();
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
-            <a class="navbar-brand" href="index.php">Termin2Praxis</a>
+            <a class="navbar-brand d-flex align-items-center" href="index.php">
+                <img src="assets/T2P_transparent_2.svg" alt="T2P Logo" style="height: 45px; margin-right: 10px;">
+                <span>Termin2Praxis</span>
+            </a>
             <div class="navbar-nav ms-auto align-items-center">
                 <?php if (isLoggedIn()): ?>
                     <?php if (hasRole('patient')): ?>
