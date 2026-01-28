@@ -253,9 +253,21 @@ $conn->close();
                         <div class="col-md-6 col-lg-4">
                             <div class="card praxis-card shadow-sm" onclick="window.location.href='praxis_termine.php?id=<?php echo $praxis['id']; ?>'">
                                 <div class="position-relative">
-                                    <img src="<?php echo htmlspecialchars($praxis['bild_url']); ?>" 
-                                         alt="<?php echo htmlspecialchars($praxis['name']); ?>" 
-                                         class="praxis-card-img">
+                                    <?php if (!empty($praxis['bild_url']) && $praxis['bild_url'] !== 'https://via.placeholder.com/400x300?text=Arztpraxis'): ?>
+                                        <img src="<?php echo htmlspecialchars($praxis['bild_url']); ?>" 
+                                             alt="<?php echo htmlspecialchars($praxis['name']); ?>" 
+                                             class="praxis-card-img">
+                                    <?php else: ?>
+                                        <div class="praxis-card-img d-flex align-items-center justify-content-center bg-light">
+                                            <div class="text-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#6c757d" viewBox="0 0 16 16">
+                                                    <path d="M8 9.05a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
+                                                    <path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2Zm10.798 11c-.453-1.27-1.76-3-4.798-3-3.037 0-4.345 1.73-4.798 3H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1.202Z"/>
+                                                </svg>
+                                                <p class="mb-0 mt-2 text-muted fw-bold">Foto folgt</p>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                     <span class="praxis-badge text-primary">
                                         <?php echo htmlspecialchars($praxis['spezialgebiet']); ?>
                                     </span>

@@ -133,10 +133,22 @@ $conn->close();
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-3">
-                    <img src="<?php echo htmlspecialchars($praxis['bild_url']); ?>" 
-                         alt="<?php echo htmlspecialchars($praxis['name']); ?>" 
-                         class="img-fluid rounded shadow"
-                         style="max-height: 200px; width: 100%; object-fit: cover;">
+                    <?php if (!empty($praxis['bild_url']) && $praxis['bild_url'] !== 'https://via.placeholder.com/400x300?text=Arztpraxis'): ?>
+                        <img src="<?php echo htmlspecialchars($praxis['bild_url']); ?>" 
+                             alt="<?php echo htmlspecialchars($praxis['name']); ?>" 
+                             class="img-fluid rounded shadow"
+                             style="max-height: 200px; width: 100%; object-fit: cover;">
+                    <?php else: ?>
+                        <div class="bg-light rounded shadow d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <div class="text-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#6c757d" viewBox="0 0 16 16">
+                                    <path d="M8 9.05a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
+                                    <path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2Zm10.798 11c-.453-1.27-1.76-3-4.798-3-3.037 0-4.345 1.73-4.798 3H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1.202Z"/>
+                                </svg>
+                                <p class="mb-0 mt-2 text-muted small fw-bold">Foto folgt</p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div class="col-md-9">
                     <h1 class="display-4 fw-bold mb-3"><?php echo htmlspecialchars($praxis['name']); ?></h1>
