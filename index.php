@@ -3,29 +3,15 @@ require_once 'config.php';
 
 $conn = getDBConnection();
 
-// Freie Termine laden
-$sql = "SELECT * FROM appointments WHERE status = 'frei' ORDER BY date, time";
-$freie_termine = $conn->query($sql);
+// Alle Arztpraxen laden
+$sql = "SELECT * FROM praxen ORDER BY name";
+$praxen = $conn->query($sql);
 
-// Wenn eingeloggt, "Meine Termine" anzeigen
-$meine_termine = null;
-$vergangene_termine = null;
+// Benachrichtigungen zählen (global für alle Praxen)
 $notification_count = 0;
+$meine_termine = null;
 if (isLoggedIn() && hasRole('patient')) {
     $user_id = $_SESSION['user_id'];
-    // Nur aktuelle/zukünftige Termine
-    $sql = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('angefragt', 'bestätigt', 'abgelehnt', 'storniert') AND date >= CURDATE() ORDER BY date, time";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $meine_termine = $stmt->get_result();
-    
-    // Vergangene Termine
-    $sql_past = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('angefragt', 'bestätigt', 'abgelehnt', 'storniert') AND date < CURDATE() ORDER BY date DESC, time DESC";
-    $stmt_past = $conn->prepare($sql_past);
-    $stmt_past->bind_param("i", $user_id);
-    $stmt_past->execute();
-    $vergangene_termine = $stmt_past->get_result();
     
     // Benachrichtigungen zählen (nur ungelesene bestätigte + abgelehnte + stornierte Termine)
     $sql_notifications = "SELECT COUNT(*) as count FROM appointments WHERE user_id = ? AND status IN ('bestätigt', 'abgelehnt', 'storniert') AND is_read = FALSE";
@@ -36,8 +22,16 @@ if (isLoggedIn() && hasRole('patient')) {
     $notification_count = $result_notif->fetch_assoc()['count'];
     $stmt_notif->close();
     
+    // Alle aktuellen Termine des Patienten laden (über alle Praxen)
+    $sql = "SELECT a.*, p.name as praxis_name FROM appointments a 
+            LEFT JOIN praxen p ON a.praxis_id = p.id 
+            WHERE a.user_id = ? AND a.status IN ('angefragt', 'bestätigt', 'abgelehnt', 'storniert') AND a.date >= CURDATE() 
+            ORDER BY a.date, a.time";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $meine_termine = $stmt->get_result();
     $stmt->close();
-    $stmt_past->close();
 }
 
 $conn->close();
@@ -51,6 +45,32 @@ $conn->close();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <style>
+        .praxis-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            height: 100%;
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        .praxis-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        .praxis-card-img {
+            height: 200px;
+            object-fit: cover;
+            width: 100%;
+        }
+        .praxis-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.95);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
         .delete-notification-btn:hover {
             background-color: rgba(220, 53, 69, 0.1) !important;
             transform: scale(1.1);
@@ -155,9 +175,9 @@ $conn->close();
         <div class="text-center mb-5 py-5">
             <h1 class="display-3 fw-bold mb-4">Online ganz einfach Termin machen</h1>
             <p class="lead fs-3 mb-4">Ohne Anrufen - Direkt online buchen!</p>
-            <p class="fs-5 text-muted mb-4">Sehen Sie sich die verfügbaren Termine an und buchen Sie direkt</p>
-            <a href="#verfuegbareTermine" class="btn btn-primary btn-lg px-5 py-3 fs-4">
-                Jetzt freie Termine ansehen
+            <p class="fs-5 text-muted mb-4">Wählen Sie eine Arztpraxis aus und buchen Sie Ihren Wunschtermin</p>
+            <a href="#praxenUebersicht" class="btn btn-primary btn-lg px-5 py-3 fs-4">
+                Arztpraxen ansehen
             </a>
         </div>
 
@@ -178,17 +198,13 @@ $conn->close();
                             <span class="badge bg-danger ms-2"><?php echo $notification_count; ?> neue Updates</span>
                         <?php endif; ?>
                     </h4>
-                    <?php if ($vergangene_termine && $vergangene_termine->num_rows > 0): ?>
-                        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#vergangeneTermineModal">
-                            Vergangene Termine (<?php echo $vergangene_termine->num_rows; ?>)
-                        </button>
-                    <?php endif; ?>
                 </div>
                 <div class="card-body p-4">
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
                                 <tr>
+                                    <th>Praxis</th>
                                     <th>Datum</th>
                                     <th>Uhrzeit</th>
                                     <th>Status</th>
@@ -197,6 +213,7 @@ $conn->close();
                             <tbody>
                                 <?php while ($termin = $meine_termine->fetch_assoc()): ?>
                                     <tr>
+                                        <td><strong><?php echo htmlspecialchars($termin['praxis_name']); ?></strong></td>
                                         <td><?php echo date('d.m.Y', strtotime($termin['date'])); ?></td>
                                         <td><?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</td>
                                         <td>
@@ -219,114 +236,50 @@ $conn->close();
             </div>
         <?php endif; ?>
 
-        <!-- Modal für vergangene Termine -->
-        <?php if (isLoggedIn() && hasRole('patient') && $vergangene_termine && $vergangene_termine->num_rows > 0): ?>
-            <div class="modal fade" id="vergangeneTermineModal" tabindex="-1" aria-labelledby="vergangeneTermineModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-secondary text-white">
-                            <h5 class="modal-title" id="vergangeneTermineModalLabel">Vergangene Termine</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Datum</th>
-                                            <th>Uhrzeit</th>
-                                            <th>Status</th>
-                                            <th>Aktion</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="vergangeneTermineTableBody">
-                                        <?php 
-                                        $vergangene_termine->data_seek(0); // Reset pointer
-                                        while ($termin = $vergangene_termine->fetch_assoc()): 
-                                        ?>
-                                            <tr id="vergangener-termin-<?php echo $termin['id']; ?>">
-                                                <td><?php echo date('d.m.Y', strtotime($termin['date'])); ?></td>
-                                                <td><?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</td>
-                                                <td>
-                                                    <?php if ($termin['status'] === 'angefragt'): ?>
-                                                        <span class="badge bg-warning text-dark">Angefragt</span>
-                                                    <?php elseif ($termin['status'] === 'abgelehnt'): ?>
-                                                        <span class="badge bg-danger">Abgelehnt</span>
-                                                    <?php elseif ($termin['status'] === 'storniert'): ?>
-                                                        <span class="badge bg-secondary">Storniert</span>
-                                                    <?php else: ?>
-                                                        <span class="badge bg-success">Bestätigt</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-link text-danger p-1" 
-                                                            onclick="deleteVergangenerTermin(<?php echo $termin['id']; ?>)" 
-                                                            title="Termin löschen" 
-                                                            style="border-radius: 4px; transition: all 0.2s;">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                                                            <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                                                        </svg>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        <?php endwhile; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="modal-footer d-flex justify-content-between">
-                            <button type="button" class="btn btn-danger" onclick="deleteAlleVergangeneTermine()">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16">
-                                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                                </svg>
-                                Alle vergangenen Termine löschen
-                            </button>
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
-                        </div>
-                    </div>
+        <!-- Arztpraxen Übersicht -->
+        <div class="mb-5" id="praxenUebersicht">
+            <div class="text-center mb-4">
+                <h2 class="display-5 fw-bold">🏥 Unsere Arztpraxen</h2>
+                <p class="lead text-muted">Wählen Sie eine Praxis aus, um verfügbare Termine zu sehen</p>
+            </div>
+            
+            <?php if ($praxen->num_rows === 0): ?>
+                <div class="alert alert-warning text-center">
+                    <h5>Derzeit sind keine Arztpraxen verfügbar.</h5>
                 </div>
-            </div>
-        <?php endif; ?>
-
-        <!-- Verfügbare Termine (für alle sichtbar) -->
-        <div class="card mb-5 shadow-lg" id="verfuegbareTermine">
-            <div class="card-header bg-success text-white py-3">
-                <h3 class="mb-0">📅 Verfügbare Termine</h3>
-                <p class="mb-0 mt-2">Wählen Sie einen passenden Termin aus</p>
-            </div>
-            <div class="card-body p-4">
-                <div id="verfuegbareTermine">
-                    <?php if ($freie_termine->num_rows === 0): ?>
-                        <div class="alert alert-warning text-center">
-                            <h5>Derzeit sind keine freien Termine verfügbar.</h5>
-                            <p class="mb-0">Bitte schauen Sie später noch einmal vorbei.</p>
-                        </div>
-                    <?php else: ?>
-                        <div class="row g-4">
-                            <?php while ($termin = $freie_termine->fetch_assoc()): ?>
-                                <div class="col-md-6 col-lg-4">
-                                    <div class="card h-100 shadow-sm border-0">
-                                        <div class="card-body text-center p-4">
-                                            <div class="display-6 mb-3">📅</div>
-                                            <h5 class="card-title fw-bold mb-3">
-                                                <?php echo date('d.m.Y', strtotime($termin['date'])); ?>
-                                            </h5>
-                                            <p class="card-text fs-4 fw-bold text-primary mb-4">
-                                                <?php echo date('H:i', strtotime($termin['time'])); ?> Uhr
-                                            </p>
-                                            <button class="btn btn-success btn-lg w-100" onclick="bookAppointment(<?php echo $termin['id']; ?>)">
-                                                Termin buchen
-                                            </button>
+            <?php else: ?>
+                <div class="row g-4">
+                    <?php while ($praxis = $praxen->fetch_assoc()): ?>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card praxis-card shadow-sm" onclick="window.location.href='praxis_termine.php?id=<?php echo $praxis['id']; ?>'">
+                                <div class="position-relative">
+                                    <img src="<?php echo htmlspecialchars($praxis['bild_url']); ?>" 
+                                         alt="<?php echo htmlspecialchars($praxis['name']); ?>" 
+                                         class="praxis-card-img">
+                                    <span class="praxis-badge text-primary">
+                                        <?php echo htmlspecialchars($praxis['spezialgebiet']); ?>
+                                    </span>
+                                </div>
+                                <div class="card-body p-4">
+                                    <h5 class="card-title fw-bold mb-3"><?php echo htmlspecialchars($praxis['name']); ?></h5>
+                                    <p class="card-text text-muted mb-3"><?php echo htmlspecialchars(substr($praxis['beschreibung'], 0, 120)) . '...'; ?></p>
+                                    <div class="d-flex flex-column gap-2 small text-muted">
+                                        <div>
+                                            <i class="bi bi-geo-alt-fill"></i> <?php echo htmlspecialchars($praxis['adresse']); ?>
+                                        </div>
+                                        <div>
+                                            <i class="bi bi-telephone-fill"></i> <?php echo htmlspecialchars($praxis['telefon']); ?>
                                         </div>
                                     </div>
+                                    <button class="btn btn-primary w-100 mt-4">
+                                        Termine ansehen →
+                                    </button>
                                 </div>
-                            <?php endwhile; ?>
+                            </div>
                         </div>
-                    <?php endif; ?>
+                    <?php endwhile; ?>
                 </div>
-            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -338,14 +291,12 @@ $conn->close();
             const notificationDropdown = document.getElementById('notificationDropdown');
             if (notificationDropdown) {
                 notificationDropdown.addEventListener('click', function() {
-                    // Benachrichtigungen als gelesen markieren
                     fetch('api/mark_notifications_read.php', {
                         method: 'POST'
                     })
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            // Badge nach kurzer Verzögerung ausblenden
                             setTimeout(function() {
                                 const badge = notificationDropdown.querySelector('.badge');
                                 if (badge) {
@@ -365,170 +316,6 @@ $conn->close();
             }
         });
         <?php endif; ?>
-
-        // Funktion zum Löschen einer Benachrichtigung
-        function deleteNotification(appointmentId, event, buttonElement) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            if (!confirm('Möchten Sie diese Benachrichtigung wirklich löschen?')) {
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('appointment_id', appointmentId);
-            
-            // Button während der Anfrage deaktivieren
-            buttonElement.disabled = true;
-            buttonElement.style.opacity = '0.5';
-            
-            fetch('api/delete_notification.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Element mit Animation entfernen
-                    const listItem = buttonElement.closest('li');
-                    listItem.style.transition = 'opacity 0.3s, height 0.3s';
-                    listItem.style.opacity = '0';
-                    listItem.style.height = listItem.offsetHeight + 'px';
-                    
-                    setTimeout(() => {
-                        listItem.style.height = '0';
-                        listItem.style.padding = '0';
-                        listItem.style.margin = '0';
-                        
-                        setTimeout(() => {
-                            listItem.remove();
-                            
-                            // Badge-Zähler aktualisieren
-                            const badge = document.querySelector('#notificationDropdown .badge');
-                            const dropdown = document.querySelector('#notificationDropdown + .dropdown-menu');
-                            const remainingItems = dropdown.querySelectorAll('li a.dropdown-item').length;
-                            
-                            // Prüfen ob noch Benachrichtigungen vorhanden sind
-                            if (remainingItems === 0) {
-                                dropdown.innerHTML = '<li><h6 class="dropdown-header">Benachrichtigungen</h6></li><li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-muted"><small>Noch keine Terminbestätigungen</small></a></li><li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-center text-primary" href="#meineTermine">Alle Termine anzeigen</a></li>';
-                            }
-                        }, 300);
-                    }, 50);
-                } else {
-                    alert(data.message);
-                    buttonElement.disabled = false;
-                    buttonElement.style.opacity = '1';
-                }
-            })
-            .catch(error => {
-                alert('Fehler beim Löschen der Benachrichtigung');
-                console.error('Error:', error);
-                buttonElement.disabled = false;
-                buttonElement.style.opacity = '1';
-            });
-        }
-
-        // Termin buchen
-        function bookAppointment(appointmentId) {
-            if (!confirm('Möchten Sie diesen Termin buchen?')) {
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('appointment_id', appointmentId);
-            
-            fetch('api/book_appointment.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    location.reload();
-                } else {
-                    // Wenn nicht eingeloggt, zur Login-Seite weiterleiten
-                    if (data.redirect) {
-                        window.location.href = data.redirect;
-                    } else {
-                        alert(data.message);
-                    }
-                }
-            })
-            .catch(error => {
-                alert('Fehler beim Buchen des Termins');
-                console.error('Error:', error);
-            });
-        }
-
-        // Einzelnen vergangenen Termin löschen
-        function deleteVergangenerTermin(appointmentId) {
-            if (!confirm('Möchten Sie diesen Termin wirklich löschen?')) {
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('appointment_id', appointmentId);
-            
-            fetch('api/delete_appointment.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Zeile entfernen
-                    const row = document.getElementById('vergangener-termin-' + appointmentId);
-                    if (row) {
-                        row.style.transition = 'opacity 0.3s';
-                        row.style.opacity = '0';
-                        setTimeout(() => {
-                            row.remove();
-                            
-                            // Prüfen ob noch Termine vorhanden sind
-                            const tbody = document.getElementById('vergangeneTermineTableBody');
-                            if (tbody && tbody.children.length === 0) {
-                                // Modal schließen und Seite neu laden
-                                location.reload();
-                            }
-                        }, 300);
-                    }
-                } else {
-                    alert(data.message);
-                }
-            })
-            .catch(error => {
-                alert('Fehler beim Löschen des Termins');
-                console.error('Error:', error);
-            });
-        }
-
-        // Alle vergangenen Termine löschen
-        function deleteAlleVergangeneTermine() {
-            if (!confirm('Möchten Sie wirklich ALLE vergangenen Termine löschen? Diese Aktion kann nicht rückgängig gemacht werden!')) {
-                return;
-            }
-            
-            fetch('api/delete_appointment.php', {
-                method: 'POST',
-                body: new URLSearchParams({
-                    delete_all_past: 'true'
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    location.reload();
-                } else {
-                    alert(data.message);
-                }
-            })
-            .catch(error => {
-                alert('Fehler beim Löschen der Termine');
-                console.error('Error:', error);
-            });
-        }
     </script>
 </body>
 </html>
