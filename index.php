@@ -101,40 +101,26 @@ $conn->close();
                                         $count++;
                                     ?>
                                         <li>
-                                            <div class="dropdown-item <?php echo !$notif['is_read'] ? 'bg-light' : ''; ?> d-flex align-items-start justify-content-between">
-                                                <a href="#meineTermine" class="flex-grow-1 text-decoration-none text-reset">
-                                                    <div class="d-flex align-items-start">
-                                                        <?php if (!$notif['is_read']): ?>
-                                                            <span class="badge bg-danger me-2" style="font-size: 0.6rem; padding: 0.2em 0.4em;">NEU</span>
+                                            <a class="dropdown-item" href="#meineTermine">
+                                                <div class="d-flex align-items-start">
+                                                    <div class="flex-grow-1">
+                                                        <strong><?php echo date('d.m.Y', strtotime($notif['date'])); ?></strong> um <?php echo date('H:i', strtotime($notif['time'])); ?> Uhr<br>
+                                                        <?php if ($notif['status'] === 'bestätigt'): ?>
+                                                            <span class="badge bg-success">✓ Bestätigt</span>
+                                                            <small class="text-success">Ihr Termin wurde vom Arzt bestätigt</small>
+                                                        <?php elseif ($notif['status'] === 'abgelehnt'): ?>
+                                                            <span class="badge bg-danger">✗ Abgelehnt</span>
+                                                            <small class="text-danger">Ihr Termin wurde leider abgelehnt</small>
+                                                        <?php elseif ($notif['status'] === 'storniert'): ?>
+                                                            <span class="badge bg-secondary">⛔ Storniert</span>
+                                                            <small class="text-danger">Ihr Termin wurde vom Arzt storniert. Bitte buchen Sie einen neuen Termin.</small>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-warning text-dark">⏳ Angefragt</span>
+                                                            <small class="text-muted">Wartet auf Bestätigung</small>
                                                         <?php endif; ?>
-                                                        <div class="flex-grow-1">
-                                                            <strong><?php echo date('d.m.Y', strtotime($notif['date'])); ?></strong> um <?php echo date('H:i', strtotime($notif['time'])); ?> Uhr<br>
-                                                            <?php if ($notif['status'] === 'bestätigt'): ?>
-                                                                <span class="badge bg-success">✓ Bestätigt</span>
-                                                                <small class="text-success">Ihr Termin wurde vom Arzt bestätigt</small>
-                                                            <?php elseif ($notif['status'] === 'abgelehnt'): ?>
-                                                                <span class="badge bg-danger">✗ Abgelehnt</span>
-                                                                <small class="text-danger">Ihr Termin wurde leider abgelehnt</small>
-                                                            <?php elseif ($notif['status'] === 'storniert'): ?>
-                                                                <span class="badge bg-secondary">⛔ Storniert</span>
-                                                                <small class="text-danger">Ihr Termin wurde vom Arzt storniert. Bitte buchen Sie einen neuen Termin.</small>
-                                                            <?php else: ?>
-                                                                <span class="badge bg-warning text-dark">⏳ Angefragt</span>
-                                                                <small class="text-muted">Wartet auf Bestätigung</small>
-                                                            <?php endif; ?>
-                                                        </div>
                                                     </div>
-                                                </a>
-                                                <button class="btn btn-sm btn-link text-danger p-1 ms-2 delete-notification-btn" 
-                                                        onclick="deleteNotification(<?php echo $notif['id']; ?>, event, this)" 
-                                                        title="Benachrichtigung löschen" 
-                                                        style="border-radius: 4px; transition: all 0.2s;">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                                                        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
+                                                </div>
+                                            </a>
                                         </li>
                                         <?php if ($count < $total): ?>
                                             <li><hr class="dropdown-divider"></li>
