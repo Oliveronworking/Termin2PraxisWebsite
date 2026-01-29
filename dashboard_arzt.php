@@ -55,6 +55,9 @@ $conn->close();
                 <span>Termin2Praxis - Arzt</span>
             </a>
             <div class="navbar-nav ms-auto">
+                <a class="nav-link me-3" href="dashboard_praxisbesitzer.php">
+                    <i class="bi bi-building"></i> Meine Praxen verwalten
+                </a>
                 <span class="navbar-text me-3">
                     Willkommen, <?php echo htmlspecialchars($_SESSION['user_name']); ?>
                 </span>
