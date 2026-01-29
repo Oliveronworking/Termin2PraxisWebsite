@@ -51,6 +51,21 @@ switch ($sort_by) {
         $sql .= " ORDER BY name ASC";
 }
 
+// Gesamtanzahl der Praxen zählen (ohne LIMIT)
+$count_sql = str_replace("SELECT *", "SELECT COUNT(*) as total", $sql);
+if (!empty($params)) {
+    $count_stmt = $conn->prepare($count_sql);
+    $count_stmt->bind_param($types, ...$params);
+    $count_stmt->execute();
+    $total_count = $count_stmt->get_result()->fetch_assoc()['total'];
+    $count_stmt->close();
+} else {
+    $total_count = $conn->query($count_sql)->fetch_assoc()['total'];
+}
+
+// Nur die ersten 6 Praxen laden
+$sql .= " LIMIT 6";
+
 // Query ausführen
 if (!empty($params)) {
     $stmt = $conn->prepare($sql);
@@ -593,10 +608,11 @@ $conn->close();
                 <div>
                     <h2 class="display-5 fw-bold mb-2">🏥 Unsere Arztpraxen</h2>
                     <p class="results-count">
-                        <?php 
-                        $total_count = $praxen->num_rows;
-                        echo $total_count; 
-                        ?> <?php echo $total_count === 1 ? 'Praxis' : 'Praxen'; ?> gefunden
+                        <span id="totalPraxenCount"><?php echo $total_count; ?></span> 
+                        <span id="praxenLabel"><?php echo $total_count === 1 ? 'Praxis' : 'Praxen'; ?></span> gefunden
+                        <?php if ($praxen->num_rows < $total_count): ?>
+                            <span class="text-muted" id="displayedCount"> (<span id="displayedNumber"><?php echo $praxen->num_rows; ?></span> angezeigt)</span>
+                        <?php endif; ?>
                     </p>
                 </div>
             </div>
@@ -607,7 +623,7 @@ $conn->close();
                     <p class="mb-0">Versuchen Sie, die Filter zu ändern oder die Suche anzupassen.</p>
                 </div>
             <?php else: ?>
-                <div class="row g-4">
+                <div class="row g-4" id="praxenContainer">
                     <?php while ($praxis = $praxen->fetch_assoc()): ?>
                         <div class="col-md-6 col-lg-4">
                             <div class="card praxis-card shadow-sm" onclick="window.location.href='praxis_termine.php?id=<?php echo $praxis['id']; ?>'">
@@ -650,6 +666,19 @@ $conn->close();
                         </div>
                     <?php endwhile; ?>
                 </div>
+                
+                <!-- Mehr laden Button -->
+                <?php if ($praxen->num_rows < $total_count): ?>
+                    <div class="text-center mt-5" id="loadMoreContainer">
+                        <button class="btn btn-primary btn-lg px-5 py-3" id="loadMoreBtn">
+                            <i class="bi bi-arrow-down-circle"></i> Mehr laden
+                            <span class="ms-2 badge bg-light text-primary"><?php echo ($total_count - $praxen->num_rows); ?> weitere</span>
+                        </button>
+                        <div class="spinner-border text-primary mt-3" role="status" id="loadingSpinner" style="display: none;">
+                            <span class="visually-hidden">Lädt...</span>
+                        </div>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
@@ -807,6 +836,117 @@ $conn->close();
             }
         });
         <?php endif; ?>
+
+        // Mehr laden Funktionalität
+        let currentOffset = 6;
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const praxenContainer = document.getElementById('praxenContainer');
+        
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', function() {
+                loadMoreBtn.style.display = 'none';
+                loadingSpinner.style.display = 'block';
+                
+                // Filter-Parameter sammeln
+                const urlParams = new URLSearchParams(window.location.search);
+                const params = new URLSearchParams();
+                params.append('offset', currentOffset);
+                
+                if (urlParams.has('kategorie')) params.append('kategorie', urlParams.get('kategorie'));
+                if (urlParams.has('spezialgebiet')) params.append('spezialgebiet', urlParams.get('spezialgebiet'));
+                if (urlParams.has('search')) params.append('search', urlParams.get('search'));
+                if (urlParams.has('sort')) params.append('sort', urlParams.get('sort'));
+                
+                fetch('api/load_more_praxen.php?' + params.toString())
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.praxen.length > 0) {
+                            data.praxen.forEach(praxis => {
+                                const col = document.createElement('div');
+                                col.className = 'col-md-6 col-lg-4';
+                                
+                                // Bild-HTML basierend auf Verfügbarkeit
+                                let imageHtml;
+                                if (praxis.bild_url && praxis.bild_url !== 'https://via.placeholder.com/400x300?text=Arztpraxis') {
+                                    imageHtml = `<img src="${praxis.bild_url}" alt="${praxis.name}" class="praxis-card-img">`;
+                                } else {
+                                    imageHtml = `
+                                        <div class="praxis-card-img d-flex align-items-center justify-content-center bg-light">
+                                            <div class="text-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#6c757d" viewBox="0 0 16 16">
+                                                    <path d="M8 9.05a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
+                                                    <path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2Zm10.798 11c-.453-1.27-1.76-3-4.798-3-3.037 0-4.345 1.73-4.798 3H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1.202Z"/>
+                                                </svg>
+                                                <p class="mb-0 mt-2 text-muted fw-bold">Foto folgt</p>
+                                            </div>
+                                        </div>`;
+                                }
+                                
+                                col.innerHTML = `
+                                    <div class="card praxis-card shadow-sm" onclick="window.location.href='praxis_termine.php?id=${praxis.id}'">
+                                        <div class="position-relative">
+                                            ${imageHtml}
+                                            <span class="praxis-badge text-primary">
+                                                ${praxis.spezialgebiet || praxis.kategorie}
+                                            </span>
+                                        </div>
+                                        <div class="card-body p-4">
+                                            <h5 class="card-title fw-bold mb-3">${praxis.name}</h5>
+                                            <p class="card-text text-muted mb-3">${praxis.beschreibung.substring(0, 120)}...</p>
+                                            <div class="d-flex flex-column gap-2 small text-muted">
+                                                <div><i class="bi bi-geo-alt"></i> ${praxis.adresse}</div>
+                                                <div><i class="bi bi-telephone"></i> ${praxis.telefon}</div>
+                                                ${praxis.kategorie ? `<div><i class="bi bi-tag"></i> ${praxis.kategorie}</div>` : ''}
+                                            </div>
+                                            <button class="btn btn-primary w-100 mt-4">
+                                                Termine ansehen →
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                                praxenContainer.appendChild(col);
+                            });
+                            
+                            currentOffset += data.praxen.length;
+                            
+                            // Anzeige-Zähler aktualisieren
+                            const displayedNumber = document.getElementById('displayedNumber');
+                            const displayedCount = document.getElementById('displayedCount');
+                            if (displayedNumber) {
+                                displayedNumber.textContent = currentOffset;
+                            }
+                            // Zeige den Zähler an, falls er vorher nicht da war
+                            if (displayedCount && currentOffset < data.total) {
+                                displayedCount.style.display = 'inline';
+                                displayedCount.innerHTML = ` (<span id="displayedNumber">${currentOffset}</span> angezeigt)`;
+                            } else if (displayedCount && currentOffset >= data.total) {
+                                // Verstecke "angezeigt" wenn alle geladen sind
+                                displayedCount.style.display = 'none';
+                            }
+                            
+                            // Button wieder anzeigen oder verstecken, dabei Zentrierung beibehalten
+                            const loadMoreContainer = document.getElementById('loadMoreContainer');
+                            if (data.hasMore) {
+                                loadMoreBtn.style.display = 'inline-block';
+                                loadMoreBtn.querySelector('.badge').textContent = data.remaining + ' weitere';
+                                loadMoreContainer.className = 'text-center mt-5';
+                            } else {
+                                loadMoreContainer.style.display = 'none';
+                            }
+                        } else {
+                            document.getElementById('loadMoreContainer').style.display = 'none';
+                        }
+                        loadingSpinner.style.display = 'none';
+                    })
+                    .catch(error => {
+                        console.error('Fehler beim Laden weiterer Praxen:', error);
+                        loadMoreBtn.style.display = 'block';
+                        loadingSpinner.style.display = 'none';
+                        alert('Fehler beim Laden weiterer Praxen. Bitte versuchen Sie es erneut.');
+                    });
+            });
+        }
     </script>
 </body>
 </html>
