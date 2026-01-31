@@ -23,6 +23,7 @@ $conn->close();
     <title>Meine Praxen - Termin2Praxis</title>
     <link rel="icon" type="image/svg+xml" href="assets/T2P_transparent_2.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
     <style>
         .praxis-management-card {
@@ -39,6 +40,39 @@ $conn->close();
             height: 200px;
             object-fit: cover;
             border-radius: 8px;
+        }
+        /* Neue Praxis Karte Style */
+        .add-praxis-card {
+            cursor: pointer;
+            border: 2px dashed #dee2e6;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            transition: all 0.3s ease;
+        }
+        .add-praxis-card:hover {
+            border-color: #0d6efd;
+            background: linear-gradient(135deg, #e7f1ff 0%, #cfe2ff 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(13, 110, 253, 0.15);
+        }
+        .add-praxis-card:hover .add-icon-circle {
+            background: #0d6efd;
+            color: white;
+            transform: scale(1.1);
+        }
+        .add-praxis-card:hover .card-title {
+            color: #0d6efd;
+        }
+        .add-icon-circle {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #6c757d;
+            transition: all 0.3s ease;
         }
     </style>
 </head>
@@ -68,16 +102,32 @@ $conn->close();
         </div>
 
         <?php if ($meine_praxen->num_rows === 0): ?>
-            <div class="alert alert-info">
-                <h5>Keine Praxen gefunden</h5>
-                <p>Sie sind aktuell keiner Praxis als Besitzer zugeordnet. Bitte kontaktieren Sie den Administrator.</p>
+            <div class="row g-4">
+                <!-- Neue Praxis erstellen Karte -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 border-primary add-praxis-card" data-bs-toggle="modal" data-bs-target="#neuePraxisModal">
+                        <div class="card-body d-flex flex-column justify-content-center align-items-center text-center" style="min-height: 350px;">
+                            <div class="add-icon-circle mb-3">
+                                <i class="bi bi-plus-lg"></i>
+                            </div>
+                            <h5 class="card-title">Erste Praxis erstellen</h5>
+                            <p class="card-text text-muted small">Fügen Sie Ihre erste Praxis hinzu</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         <?php else: ?>
             <div class="row g-4">
-                <?php while ($praxis = $meine_praxen->fetch_assoc()): ?>
+                <?php while ($praxis = $meine_praxen->fetch_assoc()): 
+                    // Prüfe auf leere URL oder alten Placeholder
+                    $bild_url = $praxis['bild_url'] ?? '';
+                    if (empty($bild_url) || strpos($bild_url, 'via.placeholder.com') !== false) {
+                        $bild_url = 'assets/fotoFolgt.png';
+                    }
+                ?>
                     <div class="col-md-6 col-lg-4">
                         <div class="card praxis-management-card h-100" onclick="window.location.href='edit_praxis.php?id=<?php echo $praxis['id']; ?>'">
-                            <img src="<?php echo htmlspecialchars($praxis['bild_url'] ?? 'https://via.placeholder.com/400x300?text=Arztpraxis'); ?>" 
+                            <img src="<?php echo htmlspecialchars($bild_url); ?>" 
                                  class="card-img-top praxis-img" 
                                  alt="<?php echo htmlspecialchars($praxis['name']); ?>">
                             <div class="card-body">
@@ -122,10 +172,382 @@ $conn->close();
                         </div>
                     </div>
                 <?php endwhile; ?>
+                
+                <!-- Neue Praxis erstellen Karte - direkt neben den anderen -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 add-praxis-card" data-bs-toggle="modal" data-bs-target="#neuePraxisModal">
+                        <div class="card-body d-flex flex-column justify-content-center align-items-center text-center">
+                            <div class="add-icon-circle mb-3">
+                                <i class="bi bi-plus-lg"></i>
+                            </div>
+                            <h6 class="card-title text-primary mb-1">Weitere Praxis</h6>
+                            <p class="card-text text-muted small mb-0">Hinzufügen</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         <?php endif; ?>
     </div>
 
+    <!-- Modal für neue Praxis -->
+    <div class="modal fade" id="neuePraxisModal" tabindex="-1" aria-labelledby="neuePraxisModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="neuePraxisModalLabel">
+                        <i class="bi bi-plus-circle"></i> Neue Praxis erstellen
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                </div>
+                <form id="neuePraxisForm" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="row">
+                            <!-- Linke Spalte: Formular -->
+                            <div class="col-lg-7">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> Felder mit <span class="text-danger">*</span> sind Pflichtfelder.
+                                </div>
+                                
+                                <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-building"></i> Grundinformationen</h6>
+                                
+                                <div class="mb-3">
+                                    <label for="neue_praxis_name" class="form-label">Praxisname <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="neue_praxis_name" name="name" required 
+                                           placeholder="z.B. Praxis Dr. Mustermann">
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="neue_praxis_spezialgebiet" class="form-label">Spezialgebiet <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="neue_praxis_spezialgebiet" name="spezialgebiet" required>
+                                            <option value="">Bitte wählen...</option>
+                                            <option value="Allgemeinmedizin">Allgemeinmedizin</option>
+                                            <option value="Innere Medizin">Innere Medizin</option>
+                                            <option value="Orthopädie">Orthopädie</option>
+                                            <option value="Kardiologie">Kardiologie</option>
+                                            <option value="Dermatologie">Dermatologie</option>
+                                            <option value="Neurologie">Neurologie</option>
+                                            <option value="Pädiatrie">Pädiatrie</option>
+                                            <option value="Gynäkologie">Gynäkologie</option>
+                                            <option value="Urologie">Urologie</option>
+                                            <option value="HNO">HNO</option>
+                                            <option value="Augenheilkunde">Augenheilkunde</option>
+                                            <option value="Psychiatrie">Psychiatrie</option>
+                                            <option value="Zahnmedizin">Zahnmedizin</option>
+                                            <option value="Chirurgie">Chirurgie</option>
+                                            <option value="Radiologie">Radiologie</option>
+                                            <option value="Anästhesie">Anästhesie</option>
+                                            <option value="Onkologie">Onkologie</option>
+                                            <option value="Physiotherapie">Physiotherapie</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="neue_praxis_kategorie" class="form-label">Kategorie</label>
+                                        <select class="form-select" id="neue_praxis_kategorie" name="kategorie">
+                                            <option value="">Bitte wählen...</option>
+                                            <option value="Allgemeine & hausärztliche Versorgung">Allgemeine & hausärztliche Versorgung</option>
+                                            <option value="Organe & innere Erkrankungen">Organe & innere Erkrankungen</option>
+                                            <option value="Chirurgische Fächer">Chirurgische Fächer</option>
+                                            <option value="Kopf, Sinne & Nerven">Kopf, Sinne & Nerven</option>
+                                            <option value="Frauen, Männer & Kinder">Frauen, Männer & Kinder</option>
+                                            <option value="Haut, Allergien & Immunsystem">Haut, Allergien & Immunsystem</option>
+                                            <option value="Krebs & schwere Erkrankungen">Krebs & schwere Erkrankungen</option>
+                                            <option value="Diagnostik & Technik">Diagnostik & Technik</option>
+                                            <option value="Prävention & spezielle Versorgung">Prävention & spezielle Versorgung</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="neue_praxis_beschreibung" class="form-label">Beschreibung</label>
+                                    <textarea class="form-control" id="neue_praxis_beschreibung" name="beschreibung" rows="2" 
+                                              placeholder="Beschreiben Sie Ihre Praxis kurz..."></textarea>
+                                </div>
+                                
+                                <!-- Praxisbild -->
+                                <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-image"></i> Praxisbild</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="neue_praxis_bild" class="form-label">Bild hochladen</label>
+                                        <input type="file" class="form-control" id="neue_praxis_bild" name="praxis_bild" 
+                                               accept="image/jpeg,image/png,image/gif,image/webp">
+                                        <small class="text-muted">Max. 5MB (JPG, PNG, GIF, WebP)</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="neue_praxis_bild_url" class="form-label">Oder Bild-URL</label>
+                                        <input type="url" class="form-control" id="neue_praxis_bild_url" name="bild_url" 
+                                               placeholder="https://beispiel.de/bild.jpg">
+                                    </div>
+                                </div>
+                                
+                                <!-- Standort -->
+                                <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-geo-alt"></i> Standort</h6>
+                                
+                                <div class="mb-3">
+                                    <label for="neue_praxis_adresse" class="form-label">Straße und Hausnummer <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="neue_praxis_adresse" name="adresse" required
+                                           placeholder="Musterstraße 123">
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="neue_praxis_plz" class="form-label">PLZ <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="neue_praxis_plz" name="plz" required placeholder="12345">
+                                    </div>
+                                    <div class="col-md-8 mb-3">
+                                        <label for="neue_praxis_stadt" class="form-label">Stadt <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="neue_praxis_stadt" name="stadt" required placeholder="Berlin">
+                                    </div>
+                                </div>
+                                
+                                <!-- Kontaktdaten -->
+                                <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-telephone"></i> Kontaktdaten</h6>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="neue_praxis_telefon" class="form-label">Telefon <span class="text-danger">*</span></label>
+                                        <input type="tel" class="form-control" id="neue_praxis_telefon" name="telefon" 
+                                               placeholder="+49 30 12345678">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="neue_praxis_email" class="form-label">E-Mail <span class="text-danger">*</span></label>
+                                        <input type="email" class="form-control" id="neue_praxis_email" name="email" 
+                                               placeholder="info@praxis.de">
+                                    </div>
+                                </div>
+                                <div class="alert alert-warning small py-2">
+                                    <i class="bi bi-exclamation-triangle"></i> Mind. Telefon oder E-Mail muss angegeben werden.
+                                </div>
+                            </div>
+                            
+                            <!-- Rechte Spalte: Live-Vorschau -->
+                            <div class="col-lg-5">
+                                <div class="sticky-top" style="top: 10px;">
+                                    <h6 class="border-bottom pb-2 mb-3"><i class="bi bi-eye"></i> Live-Vorschau</h6>
+                                    <p class="text-muted small">So sehen Patienten Ihre Praxis:</p>
+                                    
+                                    <div class="card shadow-sm">
+                                        <img src="assets/fotoFolgt.png" 
+                                             class="card-img-top" 
+                                             alt="Praxis Vorschau"
+                                             id="vorschauBildNeu"
+                                             style="height: 180px; object-fit: cover;">
+                                        <div class="card-body">
+                                            <h5 class="card-title" id="vorschauName">Praxisname</h5>
+                                            
+                                            <span class="badge bg-primary mb-2" id="vorschauSpezialgebiet" style="display: none;"></span>
+                                            <span class="badge bg-secondary mb-2" id="vorschauKategorie" style="display: none;"></span>
+                                            
+                                            <p class="card-text text-muted small" id="vorschauBeschreibung">
+                                                <em>Beschreibung wird hier angezeigt...</em>
+                                            </p>
+                                            
+                                            <hr>
+                                            
+                                            <p class="mb-1 small">
+                                                <i class="bi bi-geo-alt text-primary"></i> 
+                                                <span id="vorschauAdresse">Adresse wird hier angezeigt</span>
+                                            </p>
+                                            
+                                            <p class="mb-1 small" id="vorschauTelefonZeile" style="display: none;">
+                                                <i class="bi bi-telephone text-primary"></i> 
+                                                <span id="vorschauTelefon"></span>
+                                            </p>
+                                            
+                                            <p class="mb-0 small" id="vorschauEmailZeile" style="display: none;">
+                                                <i class="bi bi-envelope text-primary"></i> 
+                                                <span id="vorschauEmail"></span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle"></i> Abbrechen
+                        </button>
+                        <button type="submit" class="btn btn-success" id="btnPraxisErstellen">
+                            <i class="bi bi-plus-circle"></i> Praxis erstellen
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Live-Vorschau aktualisieren
+        function updatePreview() {
+            // Name
+            const name = document.getElementById('neue_praxis_name').value || 'Praxisname';
+            document.getElementById('vorschauName').textContent = name;
+            
+            // Spezialgebiet
+            const spezialgebiet = document.getElementById('neue_praxis_spezialgebiet').value;
+            const spezialgebietBadge = document.getElementById('vorschauSpezialgebiet');
+            if (spezialgebiet) {
+                spezialgebietBadge.textContent = spezialgebiet;
+                spezialgebietBadge.style.display = 'inline-block';
+            } else {
+                spezialgebietBadge.style.display = 'none';
+            }
+            
+            // Kategorie
+            const kategorie = document.getElementById('neue_praxis_kategorie').value;
+            const kategorieBadge = document.getElementById('vorschauKategorie');
+            if (kategorie) {
+                kategorieBadge.textContent = kategorie;
+                kategorieBadge.style.display = 'inline-block';
+            } else {
+                kategorieBadge.style.display = 'none';
+            }
+            
+            // Beschreibung
+            const beschreibung = document.getElementById('neue_praxis_beschreibung').value;
+            const beschreibungEl = document.getElementById('vorschauBeschreibung');
+            if (beschreibung) {
+                beschreibungEl.innerHTML = beschreibung;
+            } else {
+                beschreibungEl.innerHTML = '<em>Beschreibung wird hier angezeigt...</em>';
+            }
+            
+            // Adresse
+            const adresse = document.getElementById('neue_praxis_adresse').value;
+            const plz = document.getElementById('neue_praxis_plz').value;
+            const stadt = document.getElementById('neue_praxis_stadt').value;
+            let adresseText = 'Adresse wird hier angezeigt';
+            if (adresse || plz || stadt) {
+                const parts = [];
+                if (adresse) parts.push(adresse);
+                if (plz || stadt) parts.push([plz, stadt].filter(Boolean).join(' '));
+                adresseText = parts.join(', ');
+            }
+            document.getElementById('vorschauAdresse').textContent = adresseText;
+            
+            // Telefon
+            const telefon = document.getElementById('neue_praxis_telefon').value;
+            const telefonZeile = document.getElementById('vorschauTelefonZeile');
+            if (telefon) {
+                document.getElementById('vorschauTelefon').textContent = telefon;
+                telefonZeile.style.display = 'block';
+            } else {
+                telefonZeile.style.display = 'none';
+            }
+            
+            // E-Mail
+            const email = document.getElementById('neue_praxis_email').value;
+            const emailZeile = document.getElementById('vorschauEmailZeile');
+            if (email) {
+                document.getElementById('vorschauEmail').textContent = email;
+                emailZeile.style.display = 'block';
+            } else {
+                emailZeile.style.display = 'none';
+            }
+        }
+        
+        // Bild-Vorschau für Dateiupload
+        document.getElementById('neue_praxis_bild').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Dateigröße prüfen (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Die Datei ist zu groß. Maximale Größe: 5MB');
+                    this.value = '';
+                    return;
+                }
+                
+                // Bild-URL leeren, da Datei Priorität hat
+                document.getElementById('neue_praxis_bild_url').value = '';
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('vorschauBildNeu').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Bild-Vorschau für URL
+        document.getElementById('neue_praxis_bild_url').addEventListener('input', function(e) {
+            const url = e.target.value.trim();
+            if (url) {
+                // Datei-Input leeren, da URL verwendet wird
+                document.getElementById('neue_praxis_bild').value = '';
+                document.getElementById('vorschauBildNeu').src = url;
+            } else {
+                document.getElementById('vorschauBildNeu').src = 'assets/fotoFolgt.png';
+            }
+        });
+        
+        // Fehlerbehandlung für Bild
+        document.getElementById('vorschauBildNeu').addEventListener('error', function() {
+            this.src = 'assets/fotoFolgt.png';
+        });
+        
+        // Event-Listener für alle Eingabefelder
+        const formFields = ['neue_praxis_name', 'neue_praxis_spezialgebiet', 'neue_praxis_kategorie', 
+                          'neue_praxis_beschreibung', 'neue_praxis_adresse', 'neue_praxis_plz', 
+                          'neue_praxis_stadt', 'neue_praxis_telefon', 'neue_praxis_email'];
+        
+        formFields.forEach(function(fieldId) {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.addEventListener('input', updatePreview);
+                element.addEventListener('change', updatePreview);
+            }
+        });
+        
+        // Modal Reset beim Schließen
+        document.getElementById('neuePraxisModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('neuePraxisForm').reset();
+            document.getElementById('vorschauBildNeu').src = 'assets/fotoFolgt.png';
+            updatePreview();
+        });
+        
+        // Formular absenden
+        document.getElementById('neuePraxisForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validierung: Mindestens Telefon oder E-Mail
+            const telefon = document.getElementById('neue_praxis_telefon').value.trim();
+            const email = document.getElementById('neue_praxis_email').value.trim();
+            
+            if (!telefon && !email) {
+                alert('Bitte geben Sie mindestens eine Telefonnummer oder E-Mail-Adresse an, damit Patienten Sie erreichen können.');
+                return;
+            }
+            
+            const btn = document.getElementById('btnPraxisErstellen');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Wird erstellt...';
+            btn.disabled = true;
+            
+            const formData = new FormData(this);
+            
+            fetch('api/create_praxis.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Erfolgsmeldung und weiterleiten zur Bearbeitung
+                    window.location.href = 'edit_praxis.php?id=' + data.praxis_id + '&created=1';
+                } else {
+                    alert('Fehler: ' + data.message);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            })
+            .catch(error => {
+                alert('Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        });
+    </script>
 </body>
 </html>

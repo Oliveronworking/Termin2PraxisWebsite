@@ -22,6 +22,12 @@ if (!$praxis) {
 $success = '';
 $error = '';
 
+// Upload-Verzeichnis erstellen falls nicht vorhanden
+$upload_dir = 'uploads/praxen/';
+if (!is_dir($upload_dir)) {
+    mkdir($upload_dir, 0755, true);
+}
+
 // Formular verarbeiten
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
@@ -33,11 +39,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $spezialgebiet = trim($_POST['spezialgebiet'] ?? '');
     $kategorie = trim($_POST['kategorie'] ?? '');
-    $bild_url = trim($_POST['bild_url'] ?? '');
+    $bild_url = trim($_POST['bild_url'] ?? $praxis['bild_url'] ?? '');
+    
+    // Bild-Upload verarbeiten
+    if (isset($_FILES['praxis_bild']) && $_FILES['praxis_bild']['error'] === UPLOAD_ERR_OK) {
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $max_size = 5 * 1024 * 1024; // 5MB
+        
+        $file_type = $_FILES['praxis_bild']['type'];
+        $file_size = $_FILES['praxis_bild']['size'];
+        
+        if (!in_array($file_type, $allowed_types)) {
+            $error = 'Nur JPG, PNG, GIF und WebP Bilder sind erlaubt.';
+        } elseif ($file_size > $max_size) {
+            $error = 'Das Bild darf maximal 5MB groß sein.';
+        } else {
+            // Dateiname generieren
+            $extension = pathinfo($_FILES['praxis_bild']['name'], PATHINFO_EXTENSION);
+            $filename = 'praxis_' . $praxis_id . '_' . time() . '.' . $extension;
+            $upload_path = $upload_dir . $filename;
+            
+            if (move_uploaded_file($_FILES['praxis_bild']['tmp_name'], $upload_path)) {
+                $bild_url = $upload_path;
+            } else {
+                $error = 'Fehler beim Hochladen des Bildes.';
+            }
+        }
+    }
     
     if (empty($name)) {
         $error = 'Der Name der Praxis ist erforderlich.';
-    } else {
+    } elseif (empty($spezialgebiet)) {
+        $error = 'Bitte wählen Sie ein Spezialgebiet aus.';
+    } elseif (empty($adresse)) {
+        $error = 'Die Adresse (Straße und Hausnummer) ist erforderlich.';
+    } elseif (empty($plz)) {
+        $error = 'Die Postleitzahl ist erforderlich.';
+    } elseif (empty($stadt)) {
+        $error = 'Die Stadt ist erforderlich.';
+    } elseif (empty($telefon) && empty($email)) {
+        $error = 'Bitte geben Sie mindestens eine Telefonnummer oder E-Mail-Adresse an.';
+    }
+    
+    if (empty($error)) {
         $update_sql = "UPDATE praxen SET 
             name = ?, 
             beschreibung = ?, 
@@ -80,6 +124,7 @@ $conn->close();
     <title><?php echo htmlspecialchars($praxis['name']); ?> bearbeiten - Termin2Praxis</title>
     <link rel="icon" type="image/svg+xml" href="assets/T2P_transparent_2.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -121,7 +166,7 @@ $conn->close();
                             </div>
                         <?php endif; ?>
 
-                        <form method="POST" action="">
+                        <form method="POST" action="" enctype="multipart/form-data">
                             <div class="mb-4">
                                 <h5 class="border-bottom pb-2">Grundinformationen</h5>
                                 
@@ -138,12 +183,43 @@ $conn->close();
                                     <small class="text-muted">Eine aussagekräftige Beschreibung hilft Patienten, Ihre Praxis besser kennenzulernen.</small>
                                 </div>
 
+                                <!-- Praxisbild Upload -->
                                 <div class="mb-3">
-                                    <label for="bild_url" class="form-label">Bild-URL</label>
-                                    <input type="url" class="form-control" id="bild_url" name="bild_url" 
-                                           value="<?php echo htmlspecialchars($praxis['bild_url'] ?? ''); ?>"
-                                           placeholder="https://beispiel.de/bild.jpg">
-                                    <small class="text-muted">URL zu einem Bild Ihrer Praxis (optional)</small>
+                                    <label class="form-label">Praxisbild</label>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <?php 
+                                            $current_bild = $praxis['bild_url'] ?? '';
+                                            $hat_eigenes_bild = !empty($current_bild) && strpos($current_bild, 'via.placeholder.com') === false;
+                                            if (!$hat_eigenes_bild) {
+                                                $current_bild = 'assets/fotoFolgt.png';
+                                            }
+                                            ?>
+                                            <img src="<?php echo htmlspecialchars($current_bild); ?>" 
+                                                 class="img-fluid rounded mb-2" 
+                                                 alt="Aktuelles Praxisbild"
+                                                 id="bildVorschau"
+                                                 style="max-height: 150px; object-fit: cover;">
+                                            <?php if ($hat_eigenes_bild): ?>
+                                                <p class="text-success small"><i class="bi bi-check-circle"></i> Eigenes Bild vorhanden</p>
+                                            <?php else: ?>
+                                                <p class="text-muted small"><i class="bi bi-info-circle"></i> Standard-Bild</p>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label for="praxis_bild" class="form-label">Neues Bild hochladen</label>
+                                            <input type="file" class="form-control" id="praxis_bild" name="praxis_bild" 
+                                                   accept="image/jpeg,image/png,image/gif,image/webp">
+                                            <small class="text-muted">Max. 5MB. Erlaubte Formate: JPG, PNG, GIF, WebP</small>
+                                            
+                                            <div class="mt-2">
+                                                <label for="bild_url" class="form-label">Oder Bild-URL eingeben</label>
+                                                <input type="url" class="form-control" id="bild_url" name="bild_url" 
+                                                       value="<?php echo $hat_eigenes_bild ? htmlspecialchars($praxis['bild_url']) : ''; ?>"
+                                                       placeholder="https://beispiel.de/bild.jpg">
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -152,21 +228,30 @@ $conn->close();
                                 
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label for="spezialgebiet" class="form-label">Spezialgebiet</label>
-                                        <input type="text" class="form-control" id="spezialgebiet" name="spezialgebiet" 
-                                               value="<?php echo htmlspecialchars($praxis['spezialgebiet'] ?? ''); ?>"
-                                               placeholder="z.B. Allgemeinmedizin, Orthopädie">
+                                        <label for="spezialgebiet" class="form-label">Spezialgebiet <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="spezialgebiet" name="spezialgebiet" required>
+                                            <option value="">Bitte wählen...</option>
+                                            <?php
+                                            $spezialgebiete = ['Allgemeinmedizin', 'Innere Medizin', 'Orthopädie', 'Kardiologie', 'Dermatologie', 'Neurologie', 'Pädiatrie', 'Gynäkologie', 'Urologie', 'HNO', 'Augenheilkunde', 'Psychiatrie', 'Zahnmedizin', 'Chirurgie', 'Radiologie', 'Anästhesie', 'Onkologie', 'Physiotherapie'];
+                                            foreach ($spezialgebiete as $sg) {
+                                                $selected = ($praxis['spezialgebiet'] ?? '') === $sg ? 'selected' : '';
+                                                echo "<option value=\"$sg\" $selected>$sg</option>";
+                                            }
+                                            ?>
+                                        </select>
                                     </div>
 
                                     <div class="col-md-6 mb-3">
                                         <label for="kategorie" class="form-label">Kategorie</label>
                                         <select class="form-select" id="kategorie" name="kategorie">
                                             <option value="">Bitte wählen</option>
-                                            <option value="Allgemeinmedizin" <?php echo ($praxis['kategorie'] ?? '') === 'Allgemeinmedizin' ? 'selected' : ''; ?>>Allgemeinmedizin</option>
-                                            <option value="Facharzt" <?php echo ($praxis['kategorie'] ?? '') === 'Facharzt' ? 'selected' : ''; ?>>Facharzt</option>
-                                            <option value="Zahnarzt" <?php echo ($praxis['kategorie'] ?? '') === 'Zahnarzt' ? 'selected' : ''; ?>>Zahnarzt</option>
-                                            <option value="Psychotherapie" <?php echo ($praxis['kategorie'] ?? '') === 'Psychotherapie' ? 'selected' : ''; ?>>Psychotherapie</option>
-                                            <option value="Physiotherapie" <?php echo ($praxis['kategorie'] ?? '') === 'Physiotherapie' ? 'selected' : ''; ?>>Physiotherapie</option>
+                                            <?php
+                                            $kategorien = ['Allgemeine & hausärztliche Versorgung', 'Organe & innere Erkrankungen', 'Chirurgische Fächer', 'Kopf, Sinne & Nerven', 'Frauen, Männer & Kinder', 'Haut, Allergien & Immunsystem', 'Krebs & schwere Erkrankungen', 'Diagnostik & Technik', 'Prävention & spezielle Versorgung'];
+                                            foreach ($kategorien as $kat) {
+                                                $selected = ($praxis['kategorie'] ?? '') === $kat ? 'selected' : '';
+                                                echo "<option value=\"$kat\" $selected>$kat</option>";
+                                            }
+                                            ?>
                                         </select>
                                     </div>
                                 </div>
@@ -176,38 +261,42 @@ $conn->close();
                                 <h5 class="border-bottom pb-2">Kontaktdaten</h5>
                                 
                                 <div class="mb-3">
-                                    <label for="adresse" class="form-label">Straße und Hausnummer</label>
-                                    <input type="text" class="form-control" id="adresse" name="adresse" 
+                                    <label for="adresse" class="form-label">Straße und Hausnummer <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="adresse" name="adresse" required
                                            value="<?php echo htmlspecialchars($praxis['adresse'] ?? ''); ?>"
                                            placeholder="Hauptstraße 123">
                                 </div>
 
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
-                                        <label for="plz" class="form-label">PLZ</label>
-                                        <input type="text" class="form-control" id="plz" name="plz" 
+                                        <label for="plz" class="form-label">PLZ <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="plz" name="plz" required
                                                value="<?php echo htmlspecialchars($praxis['plz'] ?? ''); ?>"
                                                placeholder="12345">
                                     </div>
 
                                     <div class="col-md-8 mb-3">
-                                        <label for="stadt" class="form-label">Stadt</label>
-                                        <input type="text" class="form-control" id="stadt" name="stadt" 
+                                        <label for="stadt" class="form-label">Stadt <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="stadt" name="stadt" required
                                                value="<?php echo htmlspecialchars($praxis['stadt'] ?? ''); ?>"
                                                placeholder="Berlin">
                                     </div>
                                 </div>
 
+                                <div class="alert alert-info small py-2 mb-3">
+                                    <i class="bi bi-info-circle"></i> Mindestens Telefon oder E-Mail muss angegeben werden, damit Patienten Sie kontaktieren können.
+                                </div>
+
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label for="telefon" class="form-label">Telefon</label>
+                                        <label for="telefon" class="form-label">Telefon <span class="text-danger">*</span></label>
                                         <input type="tel" class="form-control" id="telefon" name="telefon" 
                                                value="<?php echo htmlspecialchars($praxis['telefon'] ?? ''); ?>"
                                                placeholder="+49 30 12345678">
                                     </div>
 
                                     <div class="col-md-6 mb-3">
-                                        <label for="email" class="form-label">E-Mail</label>
+                                        <label for="email" class="form-label">E-Mail <span class="text-danger">*</span></label>
                                         <input type="email" class="form-control" id="email" name="email" 
                                                value="<?php echo htmlspecialchars($praxis['email'] ?? ''); ?>"
                                                placeholder="info@praxis.de">
@@ -224,6 +313,24 @@ $conn->close();
                                 </button>
                             </div>
                         </form>
+                        
+                        <!-- Praxis löschen Bereich -->
+                        <hr class="my-4">
+                        <div class="card border-danger">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Gefahrenzone</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted mb-3">
+                                    Wenn Sie diese Praxis nicht mehr betreiben, können Sie sie hier löschen. 
+                                    <strong class="text-danger">Achtung:</strong> Diese Aktion kann nicht rückgängig gemacht werden!
+                                    Alle Termine dieser Praxis werden ebenfalls gelöscht.
+                                </p>
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deletePraxisModal">
+                                    <i class="bi bi-trash"></i> Praxis löschen
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -234,9 +341,16 @@ $conn->close();
                     </div>
                     <div class="card-body">
                         <div class="card">
-                            <img src="<?php echo htmlspecialchars($praxis['bild_url'] ?? 'https://via.placeholder.com/400x300?text=Arztpraxis'); ?>" 
+                            <?php 
+                            $vorschau_bild = $praxis['bild_url'] ?? '';
+                            if (empty($vorschau_bild) || strpos($vorschau_bild, 'via.placeholder.com') !== false) {
+                                $vorschau_bild = 'assets/fotoFolgt.png';
+                            }
+                            ?>
+                            <img src="<?php echo htmlspecialchars($vorschau_bild); ?>" 
                                  class="card-img-top" 
                                  alt="<?php echo htmlspecialchars($praxis['name']); ?>"
+                                 id="vorschauBild"
                                  style="max-height: 250px; object-fit: cover;">
                             <div class="card-body">
                                 <h5 class="card-title"><?php echo htmlspecialchars($praxis['name']); ?></h5>
@@ -281,5 +395,126 @@ $conn->close();
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Bildvorschau beim Hochladen
+        document.getElementById('praxis_bild').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('bildVorschau').src = e.target.result;
+                    document.getElementById('vorschauBild').src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // URL-Vorschau
+        document.getElementById('bild_url').addEventListener('input', function(e) {
+            const url = e.target.value;
+            if (url) {
+                document.getElementById('bildVorschau').src = url;
+                document.getElementById('vorschauBild').src = url;
+            }
+        });
+        
+        // Formular-Validierung für Telefon/E-Mail
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const telefon = document.getElementById('telefon').value.trim();
+            const email = document.getElementById('email').value.trim();
+            
+            if (!telefon && !email) {
+                e.preventDefault();
+                alert('Bitte geben Sie mindestens eine Telefonnummer oder E-Mail-Adresse an, damit Patienten Sie kontaktieren können.');
+                document.getElementById('telefon').focus();
+            }
+        });
+    </script>
+    
+    <!-- Modal für Praxis löschen -->
+    <div class="modal fade" id="deletePraxisModal" tabindex="-1" aria-labelledby="deletePraxisModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deletePraxisModalLabel">
+                        <i class="bi bi-exclamation-triangle"></i> Praxis löschen
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <strong>Warnung!</strong> Diese Aktion kann nicht rückgängig gemacht werden.
+                    </div>
+                    <p>Wenn Sie diese Praxis löschen:</p>
+                    <ul>
+                        <li>Werden alle Termine dieser Praxis gelöscht</li>
+                        <li>Können Patienten keine Termine mehr buchen</li>
+                        <li>Gehen alle Praxisdaten verloren</li>
+                    </ul>
+                    <hr>
+                    <p class="mb-2">Um zu bestätigen, geben Sie den Praxisnamen ein:</p>
+                    <p class="fw-bold text-primary mb-2" id="praxisNameDisplay"><?php echo htmlspecialchars($praxis['name']); ?></p>
+                    <input type="text" class="form-control" id="confirmDeleteInput" placeholder="Praxisname eingeben">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i class="bi bi-trash"></i> Endgültig löschen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Script für Praxis löschen (nach dem Modal!) -->
+    <script>
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            const confirmInput = document.getElementById('confirmDeleteInput').value.trim();
+            const praxisName = document.getElementById('praxisNameDisplay').textContent.trim();
+            
+            console.log('Eingabe:', confirmInput);
+            console.log('Erwartet:', praxisName);
+            
+            if (confirmInput !== praxisName) {
+                alert('Der eingegebene Name stimmt nicht überein.\n\nErwartet: "' + praxisName + '"\nEingegeben: "' + confirmInput + '"');
+                return;
+            }
+            
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Wird gelöscht...';
+            
+            fetch('api/delete_praxis.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    praxis_id: <?php echo $praxis_id; ?>
+                })
+            })
+            .then(response => {
+                console.log('Response Status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response Data:', data);
+                if (data.success) {
+                    alert('Die Praxis wurde erfolgreich gelöscht.');
+                    window.location.href = 'dashboard_praxisbesitzer.php';
+                } else {
+                    alert('Fehler: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-trash"></i> Endgültig löschen';
+                }
+            })
+            .catch(error => {
+                console.error('Fetch Error:', error);
+                alert('Ein Fehler ist aufgetreten: ' + error.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-trash"></i> Endgültig löschen';
+            });
+        });
+    </script>
 </body>
 </html>
