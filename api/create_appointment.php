@@ -12,9 +12,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $multipleSlots = isset($_POST['multipleSlots']) && $_POST['multipleSlots'] === 'true';
     $slotCount = isset($_POST['slotCount']) ? intval($_POST['slotCount']) : 1;
     $slotInterval = isset($_POST['slotInterval']) ? intval($_POST['slotInterval']) : 15;
+    $praxis_id = isset($_POST['praxis_id']) ? intval($_POST['praxis_id']) : null;
     
     if (empty($date) || empty($time)) {
         echo json_encode(['success' => false, 'message' => 'Datum und Uhrzeit sind erforderlich']);
+        exit();
+    }
+    
+    if (!$praxis_id) {
+        echo json_encode(['success' => false, 'message' => 'Keine Praxis ausgewählt. Bitte wählen Sie eine Praxis aus.']);
         exit();
     }
     
@@ -81,17 +87,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Termin erstellen
         if ($duration !== null && $description !== null) {
-            $stmt = $conn->prepare("INSERT INTO appointments (date, time, duration, description, status) VALUES (?, ?, ?, ?, 'frei')");
-            $stmt->bind_param("ssis", $currentDate, $currentTimeStr, $duration, $description);
+            $stmt = $conn->prepare("INSERT INTO appointments (date, time, duration, description, status, praxis_id) VALUES (?, ?, ?, ?, 'frei', ?)");
+            $stmt->bind_param("ssisi", $currentDate, $currentTimeStr, $duration, $description, $praxis_id);
         } elseif ($duration !== null) {
-            $stmt = $conn->prepare("INSERT INTO appointments (date, time, duration, status) VALUES (?, ?, ?, 'frei')");
-            $stmt->bind_param("ssi", $currentDate, $currentTimeStr, $duration);
+            $stmt = $conn->prepare("INSERT INTO appointments (date, time, duration, status, praxis_id) VALUES (?, ?, ?, 'frei', ?)");
+            $stmt->bind_param("ssii", $currentDate, $currentTimeStr, $duration, $praxis_id);
         } elseif ($description !== null) {
-            $stmt = $conn->prepare("INSERT INTO appointments (date, time, description, status) VALUES (?, ?, ?, 'frei')");
-            $stmt->bind_param("sss", $currentDate, $currentTimeStr, $description);
+            $stmt = $conn->prepare("INSERT INTO appointments (date, time, description, status, praxis_id) VALUES (?, ?, ?, 'frei', ?)");
+            $stmt->bind_param("sssi", $currentDate, $currentTimeStr, $description, $praxis_id);
         } else {
-            $stmt = $conn->prepare("INSERT INTO appointments (date, time, status) VALUES (?, ?, 'frei')");
-            $stmt->bind_param("ss", $currentDate, $currentTimeStr);
+            $stmt = $conn->prepare("INSERT INTO appointments (date, time, status, praxis_id) VALUES (?, ?, 'frei', ?)");
+            $stmt->bind_param("ssi", $currentDate, $currentTimeStr, $praxis_id);
         }
         
         if ($stmt->execute()) {

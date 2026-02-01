@@ -19,9 +19,16 @@ document.getElementById('createAppointmentForm').addEventListener('submit', func
     const slotInterval = document.getElementById('slotInterval').value;
     const messageDiv = document.getElementById('createMessage');
     
+    // Praxis-ID aus globaler Variable (wird in dashboard_arzt.php gesetzt)
+    if (typeof aktivePraxisId === 'undefined' || !aktivePraxisId) {
+        messageDiv.innerHTML = `<div class="alert alert-danger">Bitte wählen Sie zuerst eine Praxis aus.</div>`;
+        return;
+    }
+    
     const formData = new FormData();
     formData.append('date', date);
     formData.append('time', time);
+    formData.append('praxis_id', aktivePraxisId);
     if (duration) {
         formData.append('duration', duration);
     }

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 29, 2026 at 09:39 PM
+-- Generation Time: Feb 01, 2026 at 11:16 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -49,21 +49,28 @@ CREATE TABLE `appointments` (
 INSERT INTO `appointments` (`id`, `user_id`, `date`, `time`, `duration`, `description`, `status`, `confirmed_by`, `confirmed_at`, `is_read`, `created_at`, `praxis_id`) VALUES
 (11, 8, '2323-03-12', '22:23:00', NULL, NULL, 'storniert', 7, '2026-01-22 10:42:06', 1, '2026-01-21 16:08:23', 1),
 (13, 8, '2323-03-12', '12:03:00', NULL, NULL, 'bestätigt', 7, '2026-01-28 16:39:11', 1, '2026-01-22 10:49:55', 1),
-(16, NULL, '0000-00-00', '23:23:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 16:39:19', NULL),
-(17, NULL, '0000-00-00', '23:22:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 16:39:29', NULL),
-(18, NULL, '0000-00-00', '12:23:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 17:31:27', NULL),
-(19, NULL, '0000-00-00', '03:34:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 17:34:41', NULL),
-(20, NULL, '2232-03-12', '23:23:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 17:34:47', NULL),
-(21, NULL, '2323-03-12', '23:23:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 17:34:51', NULL),
-(22, NULL, '2323-03-01', '23:23:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 17:34:58', NULL),
-(23, NULL, '2323-04-23', '01:03:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 17:37:27', NULL),
-(24, NULL, '3222-02-23', '12:23:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 17:37:36', NULL),
-(25, NULL, '2222-02-22', '22:22:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 17:37:48', NULL),
-(26, NULL, '2222-02-27', '03:22:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-01-28 17:37:55', NULL),
-(27, NULL, '4333-03-31', '03:04:00', 15, NULL, 'frei', NULL, NULL, 0, '2026-01-28 18:00:33', NULL),
-(28, NULL, '3222-02-12', '11:11:00', 60, 'test', 'frei', NULL, NULL, 0, '2026-01-28 18:11:09', NULL),
-(29, NULL, '3222-02-12', '11:26:00', 60, 'test', 'frei', NULL, NULL, 0, '2026-01-28 18:11:09', NULL),
-(30, NULL, '3222-02-12', '11:41:00', 60, 'test', 'frei', NULL, NULL, 0, '2026-01-28 18:11:09', NULL);
+(16, NULL, '0000-00-00', '23:23:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 16:39:19', NULL),
+(17, NULL, '0000-00-00', '23:22:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 16:39:29', NULL),
+(18, NULL, '0000-00-00', '12:23:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 17:31:27', NULL),
+(19, NULL, '0000-00-00', '03:34:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 17:34:41', NULL),
+(20, NULL, '2232-03-12', '23:23:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 17:34:47', NULL),
+(21, NULL, '2323-03-12', '23:23:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 17:34:51', NULL),
+(22, NULL, '2323-03-01', '23:23:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 17:34:58', NULL),
+(23, NULL, '2323-04-23', '01:03:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 17:37:27', NULL),
+(24, NULL, '3222-02-23', '12:23:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 17:37:36', NULL),
+(25, NULL, '2222-02-22', '22:22:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 17:37:48', NULL),
+(26, NULL, '2222-02-27', '03:22:00', NULL, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 17:37:55', NULL),
+(27, NULL, '4333-03-31', '03:04:00', 15, NULL, 'storniert', NULL, NULL, 0, '2026-01-28 18:00:33', NULL),
+(28, NULL, '3222-02-12', '11:11:00', 60, 'test', 'storniert', NULL, NULL, 0, '2026-01-28 18:11:09', NULL),
+(29, NULL, '3222-02-12', '11:26:00', 60, 'test', 'storniert', NULL, NULL, 0, '2026-01-28 18:11:09', NULL),
+(30, NULL, '3222-02-12', '11:41:00', 60, 'test', 'storniert', NULL, NULL, 0, '2026-01-28 18:11:09', NULL),
+(31, 8, '2222-12-31', '12:31:00', 15, 'test', 'angefragt', NULL, NULL, 0, '2026-01-31 20:26:48', 36),
+(32, NULL, '2222-12-31', '12:46:00', 15, 'test', 'storniert', NULL, NULL, 0, '2026-01-31 20:26:48', 36),
+(33, 8, '2222-12-31', '13:01:00', 15, 'test', 'angefragt', NULL, NULL, 0, '2026-01-31 20:26:48', 36),
+(34, NULL, '2222-12-31', '13:16:00', 15, 'test', 'storniert', NULL, NULL, 0, '2026-01-31 20:26:48', 36),
+(35, 8, '2222-12-31', '13:31:00', 15, 'test', 'angefragt', NULL, NULL, 0, '2026-01-31 20:26:48', 36),
+(36, 8, '2222-02-03', '14:22:00', NULL, NULL, 'angefragt', NULL, NULL, 0, '2026-02-01 10:07:52', 36),
+(37, NULL, '2222-02-03', '14:37:00', NULL, NULL, 'frei', NULL, NULL, 0, '2026-02-01 10:07:52', 36);
 
 -- --------------------------------------------------------
 
@@ -94,7 +101,7 @@ CREATE TABLE `praxen` (
 --
 
 INSERT INTO `praxen` (`id`, `name`, `beschreibung`, `adresse`, `telefon`, `email`, `bild_url`, `spezialgebiet`, `created_at`, `plz`, `stadt`, `latitude`, `longitude`, `kategorie`, `owner_id`) VALUES
-(1, 'Praxis Dr. Müller', 'Hausarztpraxis mit langjähriger Erfahrung. Wir bieten umfassende medizinische Betreuung für die ganze Familie.', 'Hauptstraße 123, 12345 Berlin', '+49 30 12345678', 'info@praxis-mueller.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Allgemeinmedizin', '2026-01-28 13:17:28', '12345', 'Berlin', NULL, NULL, 'Allgemeine & hausärztliche Versorgung', 7),
+(1, 'Praxis Dr. Rhomberg', 'Hausarztpraxis mit langjähriger Erfahrung. Wir bieten umfassende medizinische Betreuung für die ganze Familie.', 'Hauptstraße 123, 12345 Berlin', '+49 30 12345678', 'info@praxis-mueller.de', 'uploads/praxen/praxis_1_1769888010.png', 'Allgemeinmedizin', '2026-01-28 13:17:28', '12345', 'Berlin', NULL, NULL, 'Allgemeinmedizin', 7),
 (2, 'Orthopädie Zentrum Berfin', 'Spezialisiert auf Erkrankungen des Bewegungsapparats, Sportmedizin und Rehabilitation.', 'Peterstraße 45', '+49 30 98765432', 'kontakt@ortho-schmidt.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Orthopädie', '2026-01-28 13:17:28', '12345', 'Dornbirn', NULL, NULL, '', 9),
 (3, 'Kinderarztpraxis Wagner', 'Einfühlsame Kinderbetreuung von der Geburt bis zum Jugendalter. Modern ausgestattete Praxis.', 'Parkweg 78, 12345 Berlin', '+49 30 55566677', 'praxis@kinderarzt-wagner.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Pädiatrie', '2026-01-28 13:17:28', '12345', 'Berlin', NULL, NULL, 'Frauen, Männer & Kinder', 10),
 (4, 'Praxis Dr. Internist', 'Fachärzte für Innere Medizin mit Schwerpunkt Vorsorgeuntersuchungen und chronische Erkrankungen.', 'Berliner Str. 89, 12345 Berlin', '+49 30 11122233', 'info@internist-berlin.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Innere Medizin', '2026-01-28 16:37:36', '12345', 'Berlin', 52.52000000, 13.40500000, 'Allgemeine & hausärztliche Versorgung', NULL),
@@ -123,7 +130,10 @@ INSERT INTO `praxen` (`id`, `name`, `beschreibung`, `adresse`, `telefon`, `email
 (27, 'Arbeitsmedizin Zentrum', 'Betriebsärztliche Versorgung, Vorsorgeuntersuchungen für Unternehmen.', 'Arbeitsplatz 38, 12345 Berlin', '+49 30 44455566', 'info@arbeitsmedizin.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Arbeitsmedizin', '2026-01-28 16:37:36', '12345', 'Berlin', 52.53200000, 13.43000000, 'Prävention & spezielle Versorgung', NULL),
 (28, 'Sportmedizin & Fitness', 'Sportärztliche Untersuchungen, Leistungsdiagnostik und Ernährungsberatung.', 'Sportweg 25, 12345 Berlin', '+49 30 55566677', 'kontakt@sportmedizin.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Sportmedizin', '2026-01-28 16:37:36', '12345', 'Berlin', 52.50800000, 13.38200000, 'Prävention & spezielle Versorgung', NULL),
 (29, 'Schmerztherapie Praxis', 'Chronische Schmerzen, multimodale Schmerztherapie und Akupunktur.', 'Schmerzfrei 9, 12345 Berlin', '+49 30 66677788', 'praxis@schmerztherapie.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Schmerzmedizin', '2026-01-28 16:37:36', '12345', 'Berlin', 52.53300000, 13.43200000, 'Prävention & spezielle Versorgung', NULL),
-(30, 'Geriatrie Dr. Senior', 'Altersmedizin, Gedächtnissprechstunde und ganzheitliche Betreuung älterer Patienten.', 'Seniorenweg 18, 12345 Berlin', '+49 30 77788899', 'info@geriatrie-senior.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Geriatrie', '2026-01-28 16:37:36', '12345', 'Berlin', 52.50700000, 13.38000000, 'Prävention & spezielle Versorgung', NULL);
+(30, 'Geriatrie Dr. Senior', 'Altersmedizin, Gedächtnissprechstunde und ganzheitliche Betreuung älterer Patienten.', 'Seniorenweg 18, 12345 Berlin', '+49 30 77788899', 'info@geriatrie-senior.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Geriatrie', '2026-01-28 16:37:36', '12345', 'Berlin', 52.50700000, 13.38000000, 'Prävention & spezielle Versorgung', NULL),
+(31, 'Hey', '', '', '', '', '', '', '2026-01-31 19:37:14', '', '', NULL, NULL, '', 7),
+(34, 'test', '', 'asdasd', '', 'asdasdasd@gmail.com', '', 'Innere Medizin', '2026-01-31 19:47:28', '342', 'ber', NULL, NULL, '', 7),
+(36, 'Oliver Rhomberg', 'hey', 'Am Eisweiher 2B', '+4369981981525', 'oliver.rhomberg@gmail.com', 'uploads/praxen/praxis_7_1769889700_697e5fa46544e.png', 'Orthopädie', '2026-01-31 20:01:40', '6850', 'Dornbirn', NULL, NULL, '', 7);
 
 -- --------------------------------------------------------
 
@@ -187,13 +197,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `appointments`
 --
 ALTER TABLE `appointments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
 
 --
 -- AUTO_INCREMENT for table `praxen`
 --
 ALTER TABLE `praxen`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `users`

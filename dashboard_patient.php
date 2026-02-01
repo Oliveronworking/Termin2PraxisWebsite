@@ -4,13 +4,21 @@ requireRole('patient');
 
 $conn = getDBConnection();
 
-// Freie Termine laden
-$sql = "SELECT * FROM appointments WHERE status = 'frei' ORDER BY date, time";
+// Freie Termine laden mit Praxis-Informationen
+$sql = "SELECT a.*, p.name as praxis_name, p.adresse, p.plz, p.stadt, p.telefon, p.email 
+        FROM appointments a 
+        LEFT JOIN praxen p ON a.praxis_id = p.id 
+        WHERE a.status = 'frei' 
+        ORDER BY a.date, a.time";
 $freie_termine = $conn->query($sql);
 
-// Termine des Patienten laden (angefragt und bestätigt)
+// Termine des Patienten laden (angefragt und bestätigt) mit Praxis-Informationen
 $user_id = $_SESSION['user_id'];
-$sql = "SELECT * FROM appointments WHERE user_id = ? AND status IN ('angefragt', 'bestätigt') ORDER BY date, time";
+$sql = "SELECT a.*, p.name as praxis_name, p.adresse, p.plz, p.stadt, p.telefon, p.email 
+        FROM appointments a 
+        LEFT JOIN praxen p ON a.praxis_id = p.id 
+        WHERE a.user_id = ? AND a.status IN ('angefragt', 'bestätigt') 
+        ORDER BY a.date, a.time";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -27,6 +35,7 @@ $conn->close();
     <title>Patienten Dashboard - Termin2Praxis</title>
     <link rel="icon" type="image/svg+xml" href="assets/T2P_transparent_2.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -60,6 +69,7 @@ $conn->close();
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
+                                        <th>Praxis</th>
                                         <th>Datum</th>
                                         <th>Uhrzeit</th>
                                         <th>Dauer</th>
@@ -70,6 +80,16 @@ $conn->close();
                                 <tbody>
                                     <?php while ($termin = $meine_termine->fetch_assoc()): ?>
                                         <tr>
+                                            <td>
+                                                <?php if ($termin['praxis_name']): ?>
+                                                    <strong><?php echo htmlspecialchars($termin['praxis_name']); ?></strong>
+                                                    <?php if ($termin['stadt']): ?>
+                                                        <br><small class="text-muted"><?php echo htmlspecialchars($termin['stadt']); ?></small>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?php echo date('d.m.Y', strtotime($termin['date'])); ?></td>
                                             <td><?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</td>
                                             <td><?php echo $termin['duration'] ? $termin['duration'] . ' Min.' : '-'; ?></td>
@@ -104,13 +124,33 @@ $conn->close();
                         <div class="row">
                             <?php while ($termin = $freie_termine->fetch_assoc()): ?>
                                 <div class="col-md-6 col-lg-4 mb-3">
-                                    <div class="card">
+                                    <div class="card h-100">
                                         <div class="card-body">
+                                            <?php if ($termin['praxis_name']): ?>
+                                                <h6 class="card-subtitle mb-2 text-primary">
+                                                    <i class="bi bi-building"></i> <?php echo htmlspecialchars($termin['praxis_name']); ?>
+                                                </h6>
+                                                <?php if ($termin['adresse'] || $termin['stadt']): ?>
+                                                    <p class="card-text small text-muted mb-2">
+                                                        <?php 
+                                                        $adressTeile = [];
+                                                        if ($termin['adresse']) $adressTeile[] = $termin['adresse'];
+                                                        if ($termin['plz'] || $termin['stadt']) {
+                                                            $ortTeile = [];
+                                                            if ($termin['plz']) $ortTeile[] = $termin['plz'];
+                                                            if ($termin['stadt']) $ortTeile[] = $termin['stadt'];
+                                                            $adressTeile[] = implode(' ', $ortTeile);
+                                                        }
+                                                        echo htmlspecialchars(implode(', ', $adressTeile));
+                                                        ?>
+                                                    </p>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
                                             <h6 class="card-title">
-                                                <?php echo date('d.m.Y', strtotime($termin['date'])); ?>
+                                                <i class="bi bi-calendar"></i> <?php echo date('d.m.Y', strtotime($termin['date'])); ?>
                                             </h6>
                                             <p class="card-text">
-                                                <strong><?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</strong>
+                                                <strong><i class="bi bi-clock"></i> <?php echo date('H:i', strtotime($termin['time'])); ?> Uhr</strong>
                                                 <?php if ($termin['duration']): ?>
                                                     <br><small class="text-muted">Dauer: <?php echo $termin['duration']; ?> Min.</small>
                                                 <?php endif; ?>
@@ -118,8 +158,8 @@ $conn->close();
                                                     <br><small class="text-info"><?php echo htmlspecialchars($termin['description']); ?></small>
                                                 <?php endif; ?>
                                             </p>
-                                            <button class="btn btn-primary btn-sm" onclick="bookAppointment(<?php echo $termin['id']; ?>)">
-                                                Termin buchen
+                                            <button class="btn btn-primary btn-sm w-100" onclick="bookAppointment(<?php echo $termin['id']; ?>)">
+                                                <i class="bi bi-calendar-check"></i> Termin buchen
                                             </button>
                                         </div>
                                     </div>

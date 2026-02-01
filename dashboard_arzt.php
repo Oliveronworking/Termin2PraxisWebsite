@@ -3,20 +3,73 @@ require_once 'config.php';
 requireRole('arzt');
 
 $conn = getDBConnection();
+$user_id = $_SESSION['user_id'];
 
-// Alle Termine laden (gruppiert nach Status)
+// Praxen des Arztes laden
+$sql = "SELECT id, name FROM praxen WHERE owner_id = ? ORDER BY name";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$praxen_result = $stmt->get_result();
+$meine_praxen = [];
+while ($row = $praxen_result->fetch_assoc()) {
+    $meine_praxen[] = $row;
+}
+$stmt->close();
+
+// Aktive Praxis setzen/abrufen
+$aktive_praxis_id = null;
+if (isset($_POST['switch_praxis'])) {
+    // Praxiswechsel durchführen
+    $new_praxis_id = intval($_POST['praxis_id']);
+    // Prüfen ob Praxis dem Arzt gehört
+    $is_owner = false;
+    foreach ($meine_praxen as $p) {
+        if ($p['id'] == $new_praxis_id) {
+            $is_owner = true;
+            break;
+        }
+    }
+    if ($is_owner) {
+        $_SESSION['aktive_praxis_id'] = $new_praxis_id;
+        $aktive_praxis_id = $new_praxis_id;
+    }
+} elseif (isset($_SESSION['aktive_praxis_id'])) {
+    $aktive_praxis_id = $_SESSION['aktive_praxis_id'];
+} elseif (!empty($meine_praxen)) {
+    // Erste Praxis als Standard setzen
+    $aktive_praxis_id = $meine_praxen[0]['id'];
+    $_SESSION['aktive_praxis_id'] = $aktive_praxis_id;
+}
+
+// Alle Termine laden (gruppiert nach Status) - gefiltert nach aktiver Praxis
 $freie_termine = [];
 $angefragte_termine = [];
 $bestaetigte_termine = [];
 $bestaetigte_termine_vergangen = [];
 
-$sql = "SELECT a.*, u.name as patient_name, u.email as patient_email, 
-        arzt.name as confirmed_by_name, a.confirmed_at
-        FROM appointments a 
-        LEFT JOIN users u ON a.user_id = u.id 
-        LEFT JOIN users arzt ON a.confirmed_by = arzt.id
-        ORDER BY a.date DESC, a.time DESC";
-$result = $conn->query($sql);
+if ($aktive_praxis_id) {
+    $sql = "SELECT a.*, u.name as patient_name, u.email as patient_email, 
+            arzt.name as confirmed_by_name, a.confirmed_at
+            FROM appointments a 
+            LEFT JOIN users u ON a.user_id = u.id 
+            LEFT JOIN users arzt ON a.confirmed_by = arzt.id
+            WHERE a.praxis_id = ?
+            ORDER BY a.date DESC, a.time DESC";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $aktive_praxis_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+} else {
+    // Kein Filter wenn keine Praxis vorhanden
+    $sql = "SELECT a.*, u.name as patient_name, u.email as patient_email, 
+            arzt.name as confirmed_by_name, a.confirmed_at
+            FROM appointments a 
+            LEFT JOIN users u ON a.user_id = u.id 
+            LEFT JOIN users arzt ON a.confirmed_by = arzt.id
+            ORDER BY a.date DESC, a.time DESC";
+    $result = $conn->query($sql);
+}
 
 $heute = date('Y-m-d');
 
@@ -35,6 +88,9 @@ while ($row = $result->fetch_assoc()) {
     }
 }
 
+if (isset($stmt)) {
+    $stmt->close();
+}
 $conn->close();
 ?>
 <!DOCTYPE html>
@@ -45,6 +101,7 @@ $conn->close();
     <title>Arzt Dashboard - Termin2Praxis</title>
     <link rel="icon" type="image/svg+xml" href="assets/T2P_transparent_2.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -67,6 +124,42 @@ $conn->close();
     </nav>
 
     <div class="container mt-4">
+        <!-- Praxis-Auswahl -->
+        <?php if (!empty($meine_praxen)): ?>
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="POST" class="row align-items-end">
+                    <div class="col-md-8">
+                        <label for="praxis_select" class="form-label fw-bold">
+                            <i class="bi bi-building"></i> Aktive Praxis (Termine werden dieser Praxis zugeordnet):
+                        </label>
+                        <select class="form-select" id="praxis_select" name="praxis_id" onchange="this.form.submit()">
+                            <?php foreach ($meine_praxen as $praxis): ?>
+                                <option value="<?php echo $praxis['id']; ?>" 
+                                    <?php echo ($praxis['id'] == $aktive_praxis_id) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($praxis['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="hidden" name="switch_praxis" value="1">
+                    </div>
+                    <div class="col-md-4">
+                        <a href="dashboard_praxisbesitzer.php" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-plus-circle"></i> Neue Praxis erstellen
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php else: ?>
+        <div class="alert alert-info" role="alert">
+            <h5><i class="bi bi-info-circle"></i> Keine Praxis vorhanden</h5>
+            <p>Sie müssen zuerst eine Praxis erstellen, um Termine anbieten zu können.</p>
+            <a href="dashboard_praxisbesitzer.php" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Jetzt Praxis erstellen
+            </a>
+        </div>
+        <?php endif; ?>
         <!-- Neuen Termin erstellen -->
         <div class="card mb-4">
             <div class="card-header bg-success text-white">
@@ -328,6 +421,10 @@ $conn->close();
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Aktive Praxis-ID für JavaScript verfügbar machen
+        const aktivePraxisId = <?php echo $aktive_praxis_id ? $aktive_praxis_id : 'null'; ?>;
+    </script>
     <script src="js/arzt.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>
