@@ -93,7 +93,8 @@ while ($row = $result->fetch_assoc()) {
         'telefon' => htmlspecialchars($row['telefon']),
         'kategorie' => htmlspecialchars($row['kategorie']),
         'spezialgebiet' => htmlspecialchars($row['spezialgebiet']),
-        'bild_url' => htmlspecialchars($row['bild_url'])
+        'bild_url' => htmlspecialchars($row['bild_url']),
+        'accepting_bookings' => isset($row['accepting_bookings']) ? $row['accepting_bookings'] : 1
     ];
 }
 

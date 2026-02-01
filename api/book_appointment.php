@@ -25,6 +25,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $conn = getDBConnection();
     
+    // Prüfen ob die Praxis Buchungen akzeptiert
+    $stmt_check = $conn->prepare("SELECT p.accepting_bookings FROM appointments a 
+                                   JOIN praxen p ON a.praxis_id = p.id 
+                                   WHERE a.id = ?");
+    $stmt_check->bind_param("i", $appointment_id);
+    $stmt_check->execute();
+    $result = $stmt_check->get_result();
+    
+    if ($result->num_rows > 0) {
+        $praxis_data = $result->fetch_assoc();
+        if (!$praxis_data['accepting_bookings']) {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Diese Praxis nimmt derzeit keine neuen Terminbuchungen an. Bitte wählen Sie eine andere Praxis.'
+            ]);
+            $stmt_check->close();
+            $conn->close();
+            exit();
+        }
+    }
+    $stmt_check->close();
+    
     // Termin buchen (Status auf 'angefragt' ändern und user_id setzen)
     $stmt = $conn->prepare("UPDATE appointments SET status = 'angefragt', user_id = ? WHERE id = ? AND status = 'frei'");
     $stmt->bind_param("ii", $user_id, $appointment_id);

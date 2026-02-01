@@ -257,3 +257,37 @@ function toggleVergangeneTermine() {
         toggleBtn.innerHTML = '+ ' + count + ' vergangene Termine anzeigen';
     }
 }
+
+// Buchungsstatus für Praxis umschalten
+function toggleBookings(praxisId, currentStatus) {
+    const newStatus = currentStatus ? 0 : 1;
+    const confirmMsg = currentStatus 
+        ? 'Möchten Sie Terminbuchungen wirklich deaktivieren? Patienten können dann keine neuen Termine bei dieser Praxis buchen.'
+        : 'Möchten Sie Terminbuchungen wieder aktivieren?';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('praxis_id', praxisId);
+    formData.append('accepting', newStatus);
+    
+    fetch('api/toggle_bookings.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Fehler: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Es ist ein Fehler aufgetreten.');
+    });
+}

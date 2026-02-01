@@ -5,8 +5,8 @@ requireRole('arzt');
 $conn = getDBConnection();
 $user_id = $_SESSION['user_id'];
 
-// Praxen des Arztes laden
-$sql = "SELECT id, name FROM praxen WHERE owner_id = ? ORDER BY name";
+// Praxen des Arztes laden (mit accepting_bookings Status)
+$sql = "SELECT id, name, accepting_bookings FROM praxen WHERE owner_id = ? ORDER BY name";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -128,27 +128,51 @@ $conn->close();
         <?php if (!empty($meine_praxen)): ?>
         <div class="card mb-4">
             <div class="card-body">
-                <form method="POST" class="row align-items-end">
-                    <div class="col-md-8">
+                <form method="POST" class="row align-items-end" id="praxisForm">
+                    <div class="col-md-6">
                         <label for="praxis_select" class="form-label fw-bold">
                             <i class="bi bi-building"></i> Aktive Praxis (Termine werden dieser Praxis zugeordnet):
                         </label>
                         <select class="form-select" id="praxis_select" name="praxis_id" onchange="this.form.submit()">
-                            <?php foreach ($meine_praxen as $praxis): ?>
+                            <?php 
+                            $aktive_praxis_accepting = 1;
+                            foreach ($meine_praxen as $praxis): 
+                                if ($praxis['id'] == $aktive_praxis_id) {
+                                    $aktive_praxis_accepting = $praxis['accepting_bookings'];
+                                }
+                            ?>
                                 <option value="<?php echo $praxis['id']; ?>" 
+                                    data-accepting="<?php echo $praxis['accepting_bookings']; ?>"
                                     <?php echo ($praxis['id'] == $aktive_praxis_id) ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($praxis['name']); ?>
+                                    <?php if (!$praxis['accepting_bookings']): ?> (Buchungen deaktiviert)<?php endif; ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                         <input type="hidden" name="switch_praxis" value="1">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <?php if ($aktive_praxis_id): ?>
+                        <button type="button" class="btn w-100" id="toggleBookingsBtn"
+                                onclick="toggleBookings(<?php echo $aktive_praxis_id; ?>, <?php echo $aktive_praxis_accepting; ?>)"
+                                style="background-color: <?php echo $aktive_praxis_accepting ? '#dc3545' : '#28a745'; ?>; color: white;">
+                            <i class="bi bi-<?php echo $aktive_praxis_accepting ? 'pause-circle' : 'play-circle'; ?>"></i>
+                            <?php echo $aktive_praxis_accepting ? 'Buchungen stoppen' : 'Buchungen aktivieren'; ?>
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                    <div class="col-md-3">
                         <a href="dashboard_praxisbesitzer.php" class="btn btn-outline-primary w-100">
                             <i class="bi bi-plus-circle"></i> Neue Praxis erstellen
                         </a>
                     </div>
                 </form>
+                <?php if ($aktive_praxis_id && !$aktive_praxis_accepting): ?>
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    <strong>Hinweis:</strong> Buchungen sind derzeit für diese Praxis deaktiviert. Patienten können keine neuen Termine buchen.
+                </div>
+                <?php endif; ?>
             </div>
         </div>
         <?php else: ?>

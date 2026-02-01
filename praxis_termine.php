@@ -11,7 +11,7 @@ if ($praxis_id <= 0) {
 
 $conn = getDBConnection();
 
-// Praxis-Informationen laden
+// Praxis-Informationen laden (inklusive accepting_bookings Status)
 $sql = "SELECT * FROM praxen WHERE id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $praxis_id);
@@ -219,6 +219,18 @@ $conn->close();
             </div>
         <?php endif; ?>
 
+        <!-- Hinweis wenn Buchungen deaktiviert sind -->
+        <?php if (isset($praxis['accepting_bookings']) && !$praxis['accepting_bookings']): ?>
+            <div class="alert alert-warning shadow-lg text-center mb-5">
+                <h4><i class="bi bi-exclamation-triangle"></i> Terminbuchung derzeit nicht möglich</h4>
+                <p class="mb-3">Diese Praxis ist derzeit überlaufen und nimmt keine neuen Terminanfragen an.</p>
+                <p class="mb-0">Bitte wählen Sie eine andere Praxis in Ihrer Nähe oder versuchen Sie es später erneut.</p>
+                <a href="index.php" class="btn btn-primary mt-3">
+                    <i class="bi bi-arrow-left"></i> Zurück zur Praxisübersicht
+                </a>
+            </div>
+        <?php endif; ?>
+
         <!-- Verfügbare Termine -->
         <div class="card mb-5 shadow-lg">
             <div class="card-header bg-success text-white py-3">
@@ -226,7 +238,12 @@ $conn->close();
                 <p class="mb-0 mt-2">Wählen Sie einen passenden Termin aus</p>
             </div>
             <div class="card-body p-4">
-                <?php if ($freie_termine->num_rows === 0): ?>
+                <?php if (isset($praxis['accepting_bookings']) && !$praxis['accepting_bookings']): ?>
+                    <div class="alert alert-danger text-center">
+                        <h5><i class="bi bi-pause-circle"></i> Terminbuchung gestoppt</h5>
+                        <p class="mb-0">Die Praxis nimmt derzeit keine neuen Terminanfragen entgegen.</p>
+                    </div>
+                <?php elseif ($freie_termine->num_rows === 0): ?>
                     <div class="alert alert-warning text-center">
                         <h5>Derzeit sind keine freien Termine verfügbar.</h5>
                         <p class="mb-0">Bitte schauen Sie später noch einmal vorbei.</p>

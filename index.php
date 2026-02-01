@@ -646,6 +646,11 @@ $conn->close();
                                     <span class="praxis-badge text-primary">
                                         <?php echo htmlspecialchars($praxis['spezialgebiet']); ?>
                                     </span>
+                                    <?php if (isset($praxis['accepting_bookings']) && !$praxis['accepting_bookings']): ?>
+                                    <span class="praxis-badge bg-danger text-white" style="top: 55px;">
+                                        <i class="bi bi-pause-circle"></i> Derzeit überlaufen
+                                    </span>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="card-body p-4">
                                     <h5 class="card-title fw-bold mb-3"><?php echo htmlspecialchars($praxis['name']); ?></h5>
@@ -658,9 +663,18 @@ $conn->close();
                                             <i class="bi bi-telephone-fill"></i> <?php echo htmlspecialchars($praxis['telefon']); ?>
                                         </div>
                                     </div>
+                                    <?php if (isset($praxis['accepting_bookings']) && !$praxis['accepting_bookings']): ?>
+                                    <div class="alert alert-warning mt-3 mb-0 py-2 small">
+                                        <i class="bi bi-info-circle"></i> <strong>Hinweis:</strong> Diese Praxis nimmt derzeit keine neuen Termine an. Bitte wählen Sie eine andere Praxis.
+                                    </div>
+                                    <button class="btn btn-secondary w-100 mt-4" disabled>
+                                        <i class="bi bi-pause-circle"></i> Keine Buchungen möglich
+                                    </button>
+                                    <?php else: ?>
                                     <button class="btn btn-primary w-100 mt-4">
                                         Termine ansehen →
                                     </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -890,6 +904,11 @@ $conn->close();
                                             <span class="praxis-badge text-primary">
                                                 ${praxis.spezialgebiet || praxis.kategorie}
                                             </span>
+                                            ${!praxis.accepting_bookings ? `
+                                            <span class="praxis-badge bg-danger text-white" style="top: 55px;">
+                                                <i class="bi bi-pause-circle"></i> Derzeit überlaufen
+                                            </span>
+                                            ` : ''}
                                         </div>
                                         <div class="card-body p-4">
                                             <h5 class="card-title fw-bold mb-3">${praxis.name}</h5>
@@ -899,9 +918,18 @@ $conn->close();
                                                 <div><i class="bi bi-telephone"></i> ${praxis.telefon}</div>
                                                 ${praxis.kategorie ? `<div><i class="bi bi-tag"></i> ${praxis.kategorie}</div>` : ''}
                                             </div>
+                                            ${!praxis.accepting_bookings ? `
+                                            <div class="alert alert-warning mt-3 mb-0 py-2 small">
+                                                <i class="bi bi-info-circle"></i> <strong>Hinweis:</strong> Diese Praxis nimmt derzeit keine neuen Termine an. Bitte wählen Sie eine andere Praxis.
+                                            </div>
+                                            <button class="btn btn-secondary w-100 mt-4" disabled>
+                                                <i class="bi bi-pause-circle"></i> Keine Buchungen möglich
+                                            </button>
+                                            ` : `
                                             <button class="btn btn-primary w-100 mt-4">
                                                 Termine ansehen →
                                             </button>
+                                            `}
                                         </div>
                                     </div>
                                 `;
