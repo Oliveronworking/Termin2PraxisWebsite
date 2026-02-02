@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 01, 2026 at 10:18 PM
+-- Generation Time: Feb 02, 2026 at 04:41 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -134,7 +134,7 @@ INSERT INTO `praxen` (`id`, `name`, `beschreibung`, `adresse`, `telefon`, `email
 (30, 'Geriatrie Dr. Senior', 'Altersmedizin, Gedächtnissprechstunde und ganzheitliche Betreuung älterer Patienten.', 'Seniorenweg 18, 12345 Berlin', '+49 30 77788899', 'info@geriatrie-senior.de', 'https://via.placeholder.com/400x300?text=Arztpraxis', 'Geriatrie', '2026-01-28 16:37:36', '12345', 'Berlin', 52.50700000, 13.38000000, 'Prävention & spezielle Versorgung', NULL, 1),
 (31, 'Hey', '', '', '', '', '', '', '2026-01-31 19:37:14', '', '', NULL, NULL, '', 7, 1),
 (34, 'test', '', 'asdasd', '', 'asdasdasd@gmail.com', '', 'Innere Medizin', '2026-01-31 19:47:28', '342', 'ber', NULL, NULL, '', 7, 1),
-(36, 'Oliver Rhomberg', 'hey', 'Am Eisweiher 2B', '+4369981981525', 'oliver.rhomberg@gmail.com', 'uploads/praxen/praxis_7_1769889700_697e5fa46544e.png', 'Orthopädie', '2026-01-31 20:01:40', '6850', 'Dornbirn', NULL, NULL, '', 7, 1);
+(36, 'Oliver Rhomberg', 'hey du motherfucker', 'Am Eisweiher 2B', '+43 660 526 0401', 'oliver.rhomberg@gmail.com', '', 'Orthopädie', '2026-01-31 20:01:40', '6850', 'Dornbirn', NULL, NULL, '', 7, 1);
 
 -- --------------------------------------------------------
 

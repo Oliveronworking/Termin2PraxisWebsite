@@ -9,10 +9,31 @@ $filter_spezialgebiet = isset($_GET['spezialgebiet']) ? $_GET['spezialgebiet'] :
 $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
 $sort_by = isset($_GET['sort']) ? $_GET['sort'] : 'name';
 
+// Standort-Parameter für Entfernungsberechnung
+$user_lat = isset($_GET['lat']) ? floatval($_GET['lat']) : null;
+$user_lng = isset($_GET['lng']) ? floatval($_GET['lng']) : null;
+$use_location = ($user_lat !== null && $user_lng !== null);
+
 // SQL-Query mit Filtern aufbauen
-$sql = "SELECT * FROM praxen WHERE 1=1";
-$params = [];
-$types = '';
+if ($use_location) {
+    // Haversine-Formel für Entfernungsberechnung (in km)
+    // CASE wird verwendet, um NULL zurückzugeben wenn Koordinaten fehlen
+    $sql = "SELECT *, 
+            CASE 
+                WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN
+                    (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * 
+                    cos(radians(longitude) - radians(?)) + sin(radians(?)) * 
+                    sin(radians(latitude))))
+                ELSE NULL
+            END AS distance 
+            FROM praxen WHERE 1=1";
+    $params = [$user_lat, $user_lng, $user_lat];
+    $types = 'ddd';
+} else {
+    $sql = "SELECT * FROM praxen WHERE 1=1";
+    $params = [];
+    $types = '';
+}
 
 if (!empty($filter_kategorie)) {
     $sql .= " AND kategorie = ?";
@@ -37,18 +58,25 @@ if (!empty($search_query)) {
 }
 
 // Sortierung
-switch ($sort_by) {
-    case 'name':
-        $sql .= " ORDER BY name ASC";
-        break;
-    case 'kategorie':
-        $sql .= " ORDER BY kategorie ASC, name ASC";
-        break;
-    case 'spezialgebiet':
-        $sql .= " ORDER BY spezialgebiet ASC, name ASC";
-        break;
-    default:
-        $sql .= " ORDER BY name ASC";
+if ($use_location) {
+    // Bei aktiviertem Standort immer nach Entfernung sortieren
+    // NULL-Werte (Praxen ohne Koordinaten) kommen ans Ende
+    $sql .= " ORDER BY distance IS NULL ASC, distance ASC";
+} else {
+    // Standard-Sortierung ohne Standort
+    switch ($sort_by) {
+        case 'name':
+            $sql .= " ORDER BY name ASC";
+            break;
+        case 'kategorie':
+            $sql .= " ORDER BY kategorie ASC, name ASC";
+            break;
+        case 'spezialgebiet':
+            $sql .= " ORDER BY spezialgebiet ASC, name ASC";
+            break;
+        default:
+            $sql .= " ORDER BY name ASC";
+    }
 }
 
 // Gesamtanzahl der Praxen zählen (ohne LIMIT)
@@ -602,6 +630,21 @@ $conn->close();
             </div>
         </div>
 
+        <!-- Standort-Verwaltung -->
+        <div class="mb-4" id="locationManager" style="display: none;">
+            <div class="alert alert-success d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-geo-alt-fill me-2"></i>
+                    <strong>Standort aktiviert:</strong> <span id="locationStatus">Praxen werden nach Entfernung sortiert</span>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" id="updateLocationBtn">
+                        <i class="bi bi-arrow-clockwise"></i> Aktualisieren
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Arztpraxen Übersicht -->
         <div class="mb-5" id="praxenUebersicht">
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -646,6 +689,13 @@ $conn->close();
                                     <span class="praxis-badge text-primary">
                                         <?php echo htmlspecialchars($praxis['spezialgebiet']); ?>
                                     </span>
+                                    <?php if (isset($praxis['distance'])): ?>
+                                        <div class="position-absolute top-0 start-0 m-3">
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-geo-alt-fill"></i> <?= number_format($praxis['distance'], 1) ?> km
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
                                     <?php if (isset($praxis['accepting_bookings']) && !$praxis['accepting_bookings']): ?>
                                     <span class="praxis-badge bg-danger text-white" style="top: 55px;">
                                         <i class="bi bi-pause-circle"></i> Derzeit überlaufen
@@ -699,6 +749,118 @@ $conn->close();
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Standortverwaltung
+        const locationManager = {
+            storageKey: 'userLocation',
+            
+            // Standort aus LocalStorage laden
+            getStoredLocation() {
+                const stored = localStorage.getItem(this.storageKey);
+                return stored ? JSON.parse(stored) : null;
+            },
+            
+            // Standort in LocalStorage speichern
+            saveLocation(lat, lng) {
+                localStorage.setItem(this.storageKey, JSON.stringify({ lat, lng, timestamp: Date.now() }));
+            },
+            
+            // Standort aus LocalStorage löschen
+            deleteLocation() {
+                localStorage.removeItem(this.storageKey);
+            },
+            
+            // Standort vom Browser abfragen
+            requestLocation(callback) {
+                if (!navigator.geolocation) {
+                    alert('Ihr Browser unterstützt keine Standortabfrage.');
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        this.saveLocation(lat, lng);
+                        if (callback) callback(lat, lng);
+                    },
+                    (error) => {
+                        console.error('Standortabfrage fehlgeschlagen:', error);
+                        if (error.code === error.PERMISSION_DENIED) {
+                            alert('Standortzugriff wurde verweigert. Sie können die Praxen nicht nach Entfernung sortieren.');
+                        } else {
+                            alert('Standort konnte nicht ermittelt werden.');
+                        }
+                    }
+                );
+            },
+            
+            // URL mit Standortparametern aktualisieren
+            updateURLWithLocation(lat, lng) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('lat', lat);
+                url.searchParams.set('lng', lng);
+                window.location.href = url.toString();
+            },
+            
+            // URL ohne Standortparameter
+            removeLocationFromURL() {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('lat');
+                url.searchParams.delete('lng');
+                window.location.href = url.toString();
+            },
+            
+            // Initialisierung
+            init() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const hasLocationInURL = urlParams.has('lat') && urlParams.has('lng');
+                const storedLocation = this.getStoredLocation();
+                
+                // Standort-Manager UI anzeigen wenn Standort aktiv
+                if (hasLocationInURL) {
+                    document.getElementById('locationManager').style.display = 'block';
+                }
+                
+                // Bei Seitenaufruf ohne Standort: Abfrage starten
+                if (!hasLocationInURL && !storedLocation) {
+                    this.showLocationPrompt();
+                } else if (!hasLocationInURL && storedLocation) {
+                    // Gespeicherten Standort verwenden
+                    this.updateURLWithLocation(storedLocation.lat, storedLocation.lng);
+                }
+                
+                // Event-Listener für Aktualisieren-Button
+                const updateBtn = document.getElementById('updateLocationBtn');
+                
+                if (updateBtn) {
+                    updateBtn.addEventListener('click', () => {
+                        this.requestLocation((lat, lng) => {
+                            this.updateURLWithLocation(lat, lng);
+                        });
+                    });
+                }
+            },
+            
+            // Standort-Abfrage Dialog anzeigen
+            showLocationPrompt() {
+                const shouldAsk = confirm(
+                    'Möchten Sie Ihren Standort teilen?\n\n' +
+                    'Wir können Ihnen dann die nächstgelegenen Arztpraxen anzeigen.'
+                );
+                
+                if (shouldAsk) {
+                    this.requestLocation((lat, lng) => {
+                        this.updateURLWithLocation(lat, lng);
+                    });
+                }
+            }
+        };
+        
+        // Standortverwaltung initialisieren
+        document.addEventListener('DOMContentLoaded', function() {
+            locationManager.init();
+        });
+        
         // Smart Search mit Vorschlägen
         document.addEventListener('DOMContentLoaded', function() {
             const smartSearch = document.getElementById('smartSearch');
@@ -782,12 +944,17 @@ $conn->close();
                     const type = this.dataset.type;
                     const value = this.dataset.value;
                     
-                    const params = new URLSearchParams();
+                    const params = new URLSearchParams(window.location.search);
                     
                     if (type === 'kategorie' && value) {
-                        params.append('kategorie', value);
+                        params.set('kategorie', value);
                     } else if (type === 'spezialgebiet' && value) {
-                        params.append('spezialgebiet', value);
+                        params.set('spezialgebiet', value);
+                    }
+                    
+                    // Standortparameter beibehalten
+                    if (params.has('lat') && params.has('lng')) {
+                        // Standort bleibt in params
                     }
                     
                     const queryString = params.toString();
@@ -807,7 +974,12 @@ $conn->close();
             function applySearch() {
                 const query = smartSearch.value.trim();
                 if (query) {
-                    window.location.href = 'index.php?search=' + encodeURIComponent(query) + '#praxenUebersicht';
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('search', query);
+                    
+                    // Standortparameter beibehalten
+                    const url = 'index.php?' + params.toString() + '#praxenUebersicht';
+                    window.location.href = url;
                 }
             }
 
@@ -869,6 +1041,8 @@ $conn->close();
                 
                 if (urlParams.has('kategorie')) params.append('kategorie', urlParams.get('kategorie'));
                 if (urlParams.has('spezialgebiet')) params.append('spezialgebiet', urlParams.get('spezialgebiet'));
+                if (urlParams.has('lat')) params.append('lat', urlParams.get('lat'));
+                if (urlParams.has('lng')) params.append('lng', urlParams.get('lng'));
                 if (urlParams.has('search')) params.append('search', urlParams.get('search'));
                 if (urlParams.has('sort')) params.append('sort', urlParams.get('sort'));
                 
@@ -904,6 +1078,13 @@ $conn->close();
                                             <span class="praxis-badge text-primary">
                                                 ${praxis.spezialgebiet || praxis.kategorie}
                                             </span>
+                                            ${praxis.distance ? `
+                                            <div class="position-absolute top-0 start-0 m-3">
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-geo-alt-fill"></i> ${praxis.distance} km
+                                                </span>
+                                            </div>
+                                            ` : ''}
                                             ${!praxis.accepting_bookings ? `
                                             <span class="praxis-badge bg-danger text-white" style="top: 55px;">
                                                 <i class="bi bi-pause-circle"></i> Derzeit überlaufen
