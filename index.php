@@ -796,6 +796,9 @@ $conn->close();
             
             // URL mit Standortparametern aktualisieren
             updateURLWithLocation(lat, lng) {
+                // Scroll-Position speichern
+                sessionStorage.setItem('scrollPosition', window.scrollY);
+                
                 const url = new URL(window.location.href);
                 url.searchParams.set('lat', lat);
                 url.searchParams.set('lng', lng);
@@ -804,6 +807,9 @@ $conn->close();
             
             // URL ohne Standortparameter
             removeLocationFromURL() {
+                // Scroll-Position speichern
+                sessionStorage.setItem('scrollPosition', window.scrollY);
+                
                 const url = new URL(window.location.href);
                 url.searchParams.delete('lat');
                 url.searchParams.delete('lng');
@@ -816,14 +822,23 @@ $conn->close();
                 const hasLocationInURL = urlParams.has('lat') && urlParams.has('lng');
                 const storedLocation = this.getStoredLocation();
                 
+                // Scroll-Position wiederherstellen
+                const savedScrollPosition = sessionStorage.getItem('scrollPosition');
+                if (savedScrollPosition) {
+                    window.scrollTo(0, parseInt(savedScrollPosition));
+                    sessionStorage.removeItem('scrollPosition');
+                }
+                
                 // Standort-Manager UI anzeigen wenn Standort aktiv
                 if (hasLocationInURL) {
                     document.getElementById('locationManager').style.display = 'block';
                 }
                 
-                // Bei Seitenaufruf ohne Standort: Abfrage starten
+                // Bei Seitenaufruf ohne Standort: Abfrage direkt starten
                 if (!hasLocationInURL && !storedLocation) {
-                    this.showLocationPrompt();
+                    this.requestLocation((lat, lng) => {
+                        this.updateURLWithLocation(lat, lng);
+                    });
                 } else if (!hasLocationInURL && storedLocation) {
                     // Gespeicherten Standort verwenden
                     this.updateURLWithLocation(storedLocation.lat, storedLocation.lng);
@@ -837,20 +852,6 @@ $conn->close();
                         this.requestLocation((lat, lng) => {
                             this.updateURLWithLocation(lat, lng);
                         });
-                    });
-                }
-            },
-            
-            // Standort-Abfrage Dialog anzeigen
-            showLocationPrompt() {
-                const shouldAsk = confirm(
-                    'Möchten Sie Ihren Standort teilen?\n\n' +
-                    'Wir können Ihnen dann die nächstgelegenen Arztpraxen anzeigen.'
-                );
-                
-                if (shouldAsk) {
-                    this.requestLocation((lat, lng) => {
-                        this.updateURLWithLocation(lat, lng);
                     });
                 }
             }
