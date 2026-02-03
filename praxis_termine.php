@@ -160,9 +160,29 @@ $conn->close();
                         <span class="badge bg-light text-dark me-2">
                             <i class="bi bi-telephone"></i> <?php echo htmlspecialchars($praxis['telefon']); ?>
                         </span>
-                        <span class="badge bg-light text-dark">
+                        <span class="badge bg-light text-dark me-2">
                             <i class="bi bi-envelope"></i> <?php echo htmlspecialchars($praxis['email']); ?>
                         </span>
+                        <?php if (!empty($praxis['versicherungsart'])): ?>
+                        <span class="badge <?php 
+                            if ($praxis['versicherungsart'] === 'Gesetzlich') {
+                                echo 'bg-info';
+                            } elseif ($praxis['versicherungsart'] === 'Privat') {
+                                echo 'bg-warning text-dark';
+                            } else {
+                                echo 'bg-success';
+                            }
+                        ?>">
+                            <i class="bi bi-shield-fill-check"></i> 
+                            <?php 
+                                if ($praxis['versicherungsart'] === 'Beide') {
+                                    echo 'Gesetzlich & Privat';
+                                } else {
+                                    echo htmlspecialchars($praxis['versicherungsart']);
+                                }
+                            ?>
+                        </span>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

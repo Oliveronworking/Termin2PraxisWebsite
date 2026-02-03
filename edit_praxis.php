@@ -39,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $spezialgebiet = trim($_POST['spezialgebiet'] ?? '');
     $kategorie = trim($_POST['kategorie'] ?? '');
+    $versicherungsart = trim($_POST['versicherungsart'] ?? 'Beide');
     $bild_url = trim($_POST['bild_url'] ?? $praxis['bild_url'] ?? '');
     
     // Bild-Upload verarbeiten
@@ -92,11 +93,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             email = ?, 
             spezialgebiet = ?, 
             kategorie = ?,
-            bild_url = ?
+            bild_url = ?,
+            versicherungsart = ?
             WHERE id = ? AND owner_id = ?";
         
         $stmt = $conn->prepare($update_sql);
-        $stmt->bind_param("ssssssssssii", $name, $beschreibung, $adresse, $plz, $stadt, $telefon, $email, $spezialgebiet, $kategorie, $bild_url, $praxis_id, $user_id);
+        $stmt->bind_param("sssssssssssii", $name, $beschreibung, $adresse, $plz, $stadt, $telefon, $email, $spezialgebiet, $kategorie, $bild_url, $versicherungsart, $praxis_id, $user_id);
         
         if ($stmt->execute()) {
             $success = 'Praxisdaten erfolgreich aktualisiert!';
@@ -253,6 +255,18 @@ $conn->close();
                                             }
                                             ?>
                                         </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="versicherungsart" class="form-label">Akzeptierte Versicherungsarten</label>
+                                        <select class="form-select" id="versicherungsart" name="versicherungsart">
+                                            <option value="Beide" <?php echo ($praxis['versicherungsart'] ?? 'Beide') === 'Beide' ? 'selected' : ''; ?>>Gesetzlich & Privat</option>
+                                            <option value="Gesetzlich" <?php echo ($praxis['versicherungsart'] ?? '') === 'Gesetzlich' ? 'selected' : ''; ?>>Nur Gesetzlich</option>
+                                            <option value="Privat" <?php echo ($praxis['versicherungsart'] ?? '') === 'Privat' ? 'selected' : ''; ?>>Nur Privat</option>
+                                        </select>
+                                        <small class="text-muted">Geben Sie an, welche Versicherungsarten Sie akzeptieren</small>
                                     </div>
                                 </div>
                             </div>

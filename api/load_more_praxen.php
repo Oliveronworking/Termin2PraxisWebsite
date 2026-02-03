@@ -122,6 +122,7 @@ while ($row = $result->fetch_assoc()) {
         'kategorie' => htmlspecialchars($row['kategorie']),
         'spezialgebiet' => htmlspecialchars($row['spezialgebiet']),
         'bild_url' => htmlspecialchars($row['bild_url']),
+        'versicherungsart' => isset($row['versicherungsart']) ? htmlspecialchars($row['versicherungsart']) : '',
         'accepting_bookings' => isset($row['accepting_bookings']) ? $row['accepting_bookings'] : 1
     ];
     

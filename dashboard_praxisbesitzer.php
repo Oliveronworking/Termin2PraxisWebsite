@@ -258,6 +258,18 @@ $conn->close();
                                     </div>
                                 </div>
                                 
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="neue_praxis_versicherungsart" class="form-label">Akzeptierte Versicherungen</label>
+                                        <select class="form-select" id="neue_praxis_versicherungsart" name="versicherungsart">
+                                            <option value="Beide" selected>Gesetzlich & Privat</option>
+                                            <option value="Gesetzlich">Nur Gesetzlich</option>
+                                            <option value="Privat">Nur Privat</option>
+                                        </select>
+                                        <small class="text-muted">Welche Versicherungsarten akzeptiert Ihre Praxis?</small>
+                                    </div>
+                                </div>
+                                
                                 <div class="mb-3">
                                     <label for="neue_praxis_beschreibung" class="form-label">Beschreibung</label>
                                     <textarea class="form-control" id="neue_praxis_beschreibung" name="beschreibung" rows="2" 

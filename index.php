@@ -712,6 +712,21 @@ $conn->close();
                                         <div>
                                             <i class="bi bi-telephone-fill"></i> <?php echo htmlspecialchars($praxis['telefon']); ?>
                                         </div>
+                                        <?php if (!empty($praxis['versicherungsart'])): ?>
+                                        <div>
+                                            <i class="bi bi-shield-fill-check"></i> 
+                                            <strong>Versicherung:</strong> 
+                                            <?php 
+                                                if ($praxis['versicherungsart'] === 'Gesetzlich') {
+                                                    echo '<span class="badge bg-info">Gesetzlich</span>';
+                                                } elseif ($praxis['versicherungsart'] === 'Privat') {
+                                                    echo '<span class="badge bg-warning text-dark">Privat</span>';
+                                                } else {
+                                                    echo '<span class="badge bg-success">Gesetzlich & Privat</span>';
+                                                }
+                                            ?>
+                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                     <?php if (isset($praxis['accepting_bookings']) && !$praxis['accepting_bookings']): ?>
                                     <div class="alert alert-warning mt-3 mb-0 py-2 small">
@@ -1096,9 +1111,16 @@ $conn->close();
                                             <h5 class="card-title fw-bold mb-3">${praxis.name}</h5>
                                             <p class="card-text text-muted mb-3">${praxis.beschreibung.substring(0, 120)}...</p>
                                             <div class="d-flex flex-column gap-2 small text-muted">
-                                                <div><i class="bi bi-geo-alt"></i> ${praxis.adresse}</div>
-                                                <div><i class="bi bi-telephone"></i> ${praxis.telefon}</div>
-                                                ${praxis.kategorie ? `<div><i class="bi bi-tag"></i> ${praxis.kategorie}</div>` : ''}
+                                                <div><i class="bi bi-geo-alt-fill"></i> ${praxis.adresse}</div>
+                                                <div><i class="bi bi-telephone-fill"></i> ${praxis.telefon}</div>
+                                                ${praxis.versicherungsart ? `
+                                                <div>
+                                                    <i class="bi bi-shield-fill-check"></i> 
+                                                    <strong>Versicherung:</strong> 
+                                                    ${praxis.versicherungsart === 'Gesetzlich' ? '<span class="badge bg-info">Gesetzlich</span>' : 
+                                                      praxis.versicherungsart === 'Privat' ? '<span class="badge bg-warning text-dark">Privat</span>' : 
+                                                      '<span class="badge bg-success">Gesetzlich & Privat</span>'}
+                                                </div>` : ''}
                                             </div>
                                             ${!praxis.accepting_bookings ? `
                                             <div class="alert alert-warning mt-3 mb-0 py-2 small">

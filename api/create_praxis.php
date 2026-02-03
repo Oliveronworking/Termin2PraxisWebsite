@@ -36,6 +36,7 @@ $telefon = trim($_POST['telefon'] ?? '');
 $email = trim($_POST['email'] ?? '');
 $spezialgebiet = trim($_POST['spezialgebiet'] ?? '');
 $kategorie = trim($_POST['kategorie'] ?? '');
+$versicherungsart = trim($_POST['versicherungsart'] ?? 'Beide');
 
 // Validierung - Pflichtfelder
 if (empty($name)) {
@@ -135,11 +136,11 @@ try {
     $conn = getDBConnection();
     
     // Praxis in die Datenbank einfügen
-    $sql = "INSERT INTO praxen (name, beschreibung, adresse, plz, stadt, telefon, email, spezialgebiet, kategorie, bild_url, owner_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO praxen (name, beschreibung, adresse, plz, stadt, telefon, email, spezialgebiet, kategorie, bild_url, owner_id, versicherungsart) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssssssssssi", 
+    $stmt->bind_param("ssssssssssIs", 
         $name, 
         $beschreibung, 
         $adresse, 
@@ -150,7 +151,8 @@ try {
         $spezialgebiet, 
         $kategorie, 
         $bild_url, 
-        $user_id
+        $user_id,
+        $versicherungsart
     );
     
     if ($stmt->execute()) {
